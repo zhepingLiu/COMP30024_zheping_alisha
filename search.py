@@ -7,6 +7,7 @@ Authors: Zheping Liu, Alisha
 
 import sys
 import json
+import queue
 
 def main():
     # the file contains three entries:
@@ -27,17 +28,19 @@ def main():
 #         data: contains all settings for the game 
 # output: return a list of moves from the starting position to the goal
 def search(search_algorithm, data):
-    start_state = {data["position"], data["block"], None}
+    start_state = {data["position"], None, data["block"], None, data["colour"]}
     return search_algorithm(start_state)
 
-def make_state(current_position, block, previous_state):
+def make_state(current_position, action, block, previous_state, colour):
     if current_position == None:
         return None
     else:
         current_state = {
                 "position" : current_position,
-                "block" : block,
-                "previous_state" : previous_state
+                "action" : action,
+                "block": block,
+                "previous_state" : previous_state,
+                "colour" : colour
             }
 
         return current_state
@@ -45,6 +48,20 @@ def make_state(current_position, block, previous_state):
 # a star search algorithm
 # return a list of actions from start position to goal position
 def a_star(start_state):
+    from queue import PriorityQueue
+
+    # priority queue of states to be visited
+    openList = PriorityQueue()
+    # list of expanded coordinates
+    closedList = []
+    # dict of coordinates correspond to the cost from start to it
+    gScore = {}
+    # dict of coordinates correspond to the total cost to go to the goal
+    # from start by passing through this coordinate
+    fScore = {}
+
+    gScore[start_state["position"]] = 0
+
     actions = []
     return actions
 
@@ -57,13 +74,17 @@ def generate_successor(current_state):
     for position in game_board:
         if (position in current_state['block']) and (next_to(current_position, position)):
             # generate all successors with action JUMP
-            successor.append(make_state(jump(current_position, position), 
-                                        current_state['block'], current_state))
+            action = getAction("JUMP", current_position, position)
+            successor.append(make_state(jump(current_position, position), action,
+                                        current_state['block'], current_state, 
+                                        current_state["colour"]))
 
         elif not position in current_state['block'] and next_to(current_position, position):
             # generate all successors with action MOVE
-            successor.append(make_state(position, 
-                                        current_state['block'], current_state))
+            action = getAction("MOVE", current_position, position)
+            successor.append(make_state(position, action, 
+                                        current_state['block'], current_state,
+                                        current_state["colour"]))
     
     return successor
 
@@ -82,6 +103,9 @@ def next_to(position_1, position_2):
         return True
 
     return False
+
+def getAction(action_name, position_1, position_2):
+    return "%s from %s to %s." % (action_name, position_1, position_2)
 
 def jump(position, block):
     (q1, r1) = position
@@ -106,20 +130,28 @@ def jump(position, block):
     
     return None
 
-def exit(position, data):
-    if data["colour"] == "red":
+# TODO: need to define the action exit;
+# precondition: any of the chess is at the goal position
+# postcondition: remove one of the chess satisfy the precondition from the board,
+#                and add an action "EXIT from (x, y)"
+
+def isGoal(current_state):
+    colour = current_state["colour"]
+    position = current_state["position"]
+
+    if colour == "red":
         if position == (-3, -3) or (-3, -2) or (-3, -1) or (-3, 0):
             return True
         else:
             return False
     
-    if data["colour"] == "green":
+    if colour == "green":
         if position == (-3, 3) or (-2, 3) or (-1, 3) or (0, 3):
             return True
         else:
             return False
     
-    if data["colour"] == "blue":
+    if colour == "blue":
         if position == (0, -3) or (-1, -2) or (-2, -1) or (-3, 0):
             return True
         else:
