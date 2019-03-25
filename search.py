@@ -7,7 +7,6 @@ Authors: Zheping Liu, Alisha
 
 import sys
 import json
-import queue
 
 def main():
     # the file contains three entries:
@@ -18,18 +17,29 @@ def main():
         data = json.load(file)
 
     # TODO: Search for and output winning sequence of moves
-
-    # TODO: Call a search function and give it 'data' as argument to fulfil different
-    # search algorithm
-    search(a_star, data) # an example assuming using a_star as search method
-
-# search function that takes two arguments
-# input:  search_algorithm: a function that implements a specific search algorithm
-#         data: contains all settings for the game 
-# output: return a list of moves from the starting position to the goal
-def search(search_algorithm, data):
     start_state = {data["position"], None, data["block"], None, data["colour"]}
-    return search_algorithm(start_state)
+
+    a_star(start_state)
+
+# search function body for dfs, bfs and ucs
+# def search(open_list, closed_list, data):
+#     start_state = {data["position"], None, data["block"], None, data["colour"]}
+#     open_list.push(start_state)
+
+#     while not open_list.isEmpty():
+#         # pop a state from openList
+#         current_state = open_list.pop()
+
+#         if is_goal(current_state):
+#             return current_state
+
+#         if not current_state["position"] in closed_list:
+#           # add the current state into visited
+#           closed_list.append(current_state["position"])
+#           for successor in generate_successor(current_state):
+#               open_list.push(successor)
+
+#     return None
 
 def make_state(current_position, action, block, previous_state, colour):
     if current_position == None:
@@ -45,25 +55,76 @@ def make_state(current_position, action, block, previous_state, colour):
 
         return current_state
 
+def null_heuristic(state):
+    return 0
+
 # a star search algorithm
 # return a list of actions from start position to goal position
-def a_star(start_state):
-    from queue import PriorityQueue
-
+def a_star(start_state, heuristic=null_heuristic):
+    COST = 1
     # priority queue of states to be visited
-    openList = PriorityQueue()
+    # open_list = PriorityQueue() # this PriorityQueue is from the module in AI planning project
+    open_list = []
     # list of expanded coordinates
-    closedList = []
+    closed_list = []
     # dict of coordinates correspond to the cost from start to it
-    gScore = {}
+    g_score = {}
     # dict of coordinates correspond to the total cost to go to the goal
     # from start by passing through this coordinate
-    fScore = {}
+    f_score = {}
 
-    gScore[start_state["position"]] = 0
+    g_score[start_state["position"]] = 0
+    f_score[start_state['state']] = heuristic(start_state["position"])
 
-    actions = []
-    return actions
+    open_list.push(start_state, f_score[start_state['position']])
+
+    while not open_list.isEmpty():
+
+        current_state = open_list.pop()
+        closed_list.append(current_state)
+
+        if is_goal(current_state):
+            break
+
+        for successor in generate_successor(current_state):
+            successor_state = make_state(successor, current_state)
+            if successor_state in closed_list:
+                continue
+
+            # the cost to get to current successor is the cost to get to
+            # currentState + successor cost
+            temp_g_score = g_score[current_state['state']] + COST
+            temp_f_score = temp_g_score + \
+                heuristic(successor_state)
+
+            # if the gScore for current successor is not recorded, i.e. equals to infinity
+            if (successor_state in g_score.keys()
+                    and temp_g_score >= g_score[successor_state]):
+                continue
+            else:
+                open_list.push(successor_state, temp_f_score)
+                g_score[successor_state] = temp_g_score
+
+    return construct_goal_actions(current_state)
+
+
+def construct_goal_actions(current_state):
+
+    if current_state == None:
+      print("No solution found")
+      return []
+
+    # list of actions from start to goal
+    goal_actions = []
+
+    # re-construct the actions from goal to start
+    while current_state['action']:
+      #print(currentState)
+      goal_actions.append(current_state['action'])
+      current_state = current_state['previousState']
+
+    # return the reverse the goalAction list
+    return list(reversed(goal_actions))
 
 # generate successor states for a particular state
 def generate_successor(current_state):
@@ -74,14 +135,14 @@ def generate_successor(current_state):
     for position in game_board:
         if (position in current_state['block']) and (next_to(current_position, position)):
             # generate all successors with action JUMP
-            action = getAction("JUMP", current_position, position)
+            action = get_action("JUMP", current_position, position)
             successor.append(make_state(jump(current_position, position), action,
                                         current_state['block'], current_state, 
                                         current_state["colour"]))
 
         elif not position in current_state['block'] and next_to(current_position, position):
             # generate all successors with action MOVE
-            action = getAction("MOVE", current_position, position)
+            action = get_action("MOVE", current_position, position)
             successor.append(make_state(position, action, 
                                         current_state['block'], current_state,
                                         current_state["colour"]))
@@ -104,7 +165,7 @@ def next_to(position_1, position_2):
 
     return False
 
-def getAction(action_name, position_1, position_2):
+def get_action(action_name, position_1, position_2):
     return "%s from %s to %s." % (action_name, position_1, position_2)
 
 def jump(position, block):
@@ -135,7 +196,7 @@ def jump(position, block):
 # postcondition: remove one of the chess satisfy the precondition from the board,
 #                and add an action "EXIT from (x, y)"
 
-def isGoal(current_state):
+def is_goal(current_state):
     colour = current_state["colour"]
     position = current_state["position"]
 
