@@ -58,6 +58,22 @@ def make_state(current_position, action, block, previous_state, colour):
 def null_heuristic(state):
     return 0
 
+def manhattan_heuristic(position, colour):
+    if colour == "red":
+        goal = [[-3,-3], [-2,-2], [-3,-1], [-3, 0]]
+    elif colour == "green":
+        goal = [[-3, 3], [-2, 3], [-1, 3], [0, 3]]
+    elif colour == "blue":
+        goal = [[0, -3], [-1, -2], [-2, -1],[-3, 0]]
+
+    dist0 = abs(position[0] - goal[0][0]) + abs(position[1] - goal[0][1])
+    for i in range(1,4):
+        temp_dist = abs(position[0] - goal[i][0]) + abs(position[1] - goal[i][1])
+        if temp_dist < dist0:
+            dist0 = temp_dist
+    return dist0
+    
+
 # a star search algorithm
 # return a list of actions from start position to goal position
 def a_star(start_state, heuristic=null_heuristic):
