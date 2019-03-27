@@ -86,8 +86,7 @@ def a_star(start_state, heuristic=null_heuristic):
         if is_goal(current_state):
             break
 
-        for successor in generate_successor(current_state):
-            successor_state = make_state(successor, current_state)
+        for successor_state in generate_successor(current_state):
             if successor_state in closed_list:
                 continue
 
@@ -129,23 +128,28 @@ def construct_goal_actions(current_state):
 # generate successor states for a particular state
 def generate_successor(current_state):
     successor = []
-    current_position = current_state['position']
+    current_positions = current_state['position']
     game_board = get_game_board()
     
     for position in game_board:
-        if (position in current_state['block']) and (next_to(current_position, position)):
-            # generate all successors with action JUMP
-            action = get_action("JUMP", current_position, position)
-            successor.append(make_state(jump(current_position, position), action,
-                                        current_state['block'], current_state, 
-                                        current_state["colour"]))
+        for current_position in current_positions:
+            if (position in current_state['block']) and (next_to(current_position, position)):
+                # generate all successors with action JUMP
+                action = get_action("JUMP", current_position, position)
+                new_positions = [x for x in current_positions if x != position]
+                new_positions.append(position)
+                successor.append(make_state(new_positions, action,
+                                            current_state['block'], current_state, 
+                                            current_state["colour"]))
 
-        elif not position in current_state['block'] and next_to(current_position, position):
-            # generate all successors with action MOVE
-            action = get_action("MOVE", current_position, position)
-            successor.append(make_state(position, action, 
-                                        current_state['block'], current_state,
-                                        current_state["colour"]))
+            elif not position in current_state['block'] and next_to(current_position, position):
+                # generate all successors with action MOVE
+                action = get_action("MOVE", current_position, position)
+                new_positions = [x for x in current_positions if x != position]
+                new_positions.append(position)
+                successor.append(make_state(new_positions, action, 
+                                            current_state['block'], current_state,
+                                            current_state["colour"]))
     
     return successor
 
