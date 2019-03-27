@@ -65,13 +65,15 @@ def manhattan_heuristic(position, colour):
         goal = [[-3, 3], [-2, 3], [-1, 3], [0, 3]]
     elif colour == "blue":
         goal = [[0, -3], [-1, -2], [-2, -1],[-3, 0]]
-
+        
+#function hex_distance(a, b):
+#return (abs(a.q - b.q) + abs(a.q + a.r - b.q - b.r) + abs(a.r - b.r)) / 2
     dist0 = abs(position[0] - goal[0][0]) + abs(position[1] - goal[0][1])
     for i in range(1,4):
-        temp_dist = abs(position[0] - goal[i][0]) + abs(position[1] - goal[i][1])
+        temp_dist = (abs(position[0] - goal[i][0]) + abs(position[0] + position[1] - goal[i][0] - goal[i][1]) + abs(position[1] - goal[i][1]))/2
         if temp_dist < dist0:
             dist0 = temp_dist
-    return dist0
+    return int(dist0)
     
 
 # a star search algorithm
