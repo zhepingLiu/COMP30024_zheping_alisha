@@ -137,7 +137,7 @@ def a_star(start_state, heuristic=null_heuristic):
     g_score[start_state["position"]] = 0
     f_score[start_state["position"]] = heuristic(start_state)
 
-    open_list.push(start_state, -f_score[start_state['position']])
+    open_list.push(start_state, f_score[start_state['position']])
 
     while not open_list.is_empty():
 
@@ -167,7 +167,7 @@ def a_star(start_state, heuristic=null_heuristic):
                     and temp_g_score >= g_score[successor_state["position"]]):
                 continue
             else:
-                open_list.push(successor_state, -temp_f_score)
+                open_list.push(successor_state, temp_f_score)
                 g_score[successor_state["position"]] = temp_g_score
 
     return construct_goal_actions(current_state)
@@ -324,10 +324,8 @@ def is_goal(current_state):
     return False
 
 def get_game_board():
-    game_board = []
-    for q in range(-3, 4):
-        for r in range(-3, 4):
-            game_board.append((q,r))
+    ran = range(-3, 4)
+    game_board = [(q, r) for q in ran for r in ran if -q-r in ran]
 
     return game_board
 
