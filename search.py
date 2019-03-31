@@ -7,6 +7,28 @@ Authors: Zheping Liu, Alisha
 
 import sys
 import json
+import heapq
+
+# A Priority queue implemented using heapq
+# Reference: https://segmentfault.com/a/1190000010007858
+class PriorityQueue:
+
+    def __init__(self):
+        self._index = 0
+        self._queue = []
+        self.size = 0
+
+    def push(self, item, priority):
+        heapq.heappush(self._queue, (priority, self._index, item))
+        self._index += 1
+        self.size += 1
+
+    def pop(self):
+        self.size -= 1
+        return heapq.heappop(self._queue)[-1]
+
+    def is_empty(self):
+        return self.size == 0
 
 def main():
     # the file contains three entries:
@@ -91,7 +113,6 @@ def manhattan_heuristic(position, colour):
 # a star search algorithm
 # return a list of actions from start position to goal position
 def a_star(start_state, heuristic=null_heuristic):
-    from queue import PriorityQueue
     COST = 1
     # priority queue of states to be visited
     open_list = PriorityQueue()
@@ -106,18 +127,23 @@ def a_star(start_state, heuristic=null_heuristic):
     g_score[start_state["position"]] = 0
     f_score[start_state["position"]] = heuristic(start_state["position"])
 
-    open_list.put((-f_score[start_state['position']], start_state))
+    open_list.push(start_state, -f_score[start_state['position']])
 
-    while not open_list._qsize() == 0:
+    while not open_list.is_empty():
 
-        current_state = open_list.get()[1]
-        closed_list.append(current_state)
+        current_state = open_list.pop()
+        closed_list.append(current_state["position"])
+
+        # TODO: we have to put the action exit somewhere
+        temp_g_score = g_score[current_state["position"]]
+        current_state = exit(current_state)
+        g_score[current_state["position"]] = temp_g_score
 
         if is_goal(current_state):
             break
 
         for successor_state in generate_successor(current_state):
-            if successor_state in closed_list:
+            if successor_state["position"] in closed_list:
                 continue
 
             # the cost to get to current successor is the cost to get to
@@ -131,9 +157,7 @@ def a_star(start_state, heuristic=null_heuristic):
                     and temp_g_score >= g_score[successor_state["position"]]):
                 continue
             else:
-                item = (-temp_f_score, successor_state)
-                print(item)
-                open_list.put(item)
+                open_list.push(successor_state, -temp_f_score)
                 g_score[successor_state["position"]] = temp_g_score
 
     return construct_goal_actions(current_state)
@@ -168,7 +192,7 @@ def generate_successor(current_state):
             if (position in current_state['block']) and (next_to(current_position, position)):
                 # generate all successors with action JUMP
                 action = get_action("JUMP", current_position, position)
-                new_positions = [x for x in current_positions if x != position]
+                new_positions = [x for x in current_positions if x != current_position]
                 new_positions.append(position)
                 successor.append(make_state(new_positions, action,
                                             current_state['block'], current_state, 
@@ -177,13 +201,20 @@ def generate_successor(current_state):
             elif not position in current_state['block'] and next_to(current_position, position):
                 # generate all successors with action MOVE
                 action = get_action("MOVE", current_position, position)
-                new_positions = [x for x in current_positions if x != position]
+                new_positions = [x for x in current_positions if x != current_position]
                 new_positions.append(position)
                 successor.append(make_state(new_positions, action, 
                                             current_state['block'], current_state,
                                             current_state["colour"]))
     
     return successor
+
+
+def get_action(action_name, position_1, position_2):
+    if not position_2 == None:
+        return "%s from %s to %s." % (action_name, position_1, position_2)
+    else:
+        return "%s from %s." % (action_name, position_1)
 
 def next_to(position_1, position_2):
     (q1, r1) = position_1
@@ -200,9 +231,6 @@ def next_to(position_1, position_2):
         return True
 
     return False
-
-def get_action(action_name, position_1, position_2):
-    return "%s from %s to %s." % (action_name, position_1, position_2)
 
 def jump(position, block):
     (q1, r1) = position
@@ -227,41 +255,59 @@ def jump(position, block):
     
     return None
 
-# TODO: need to define the action exit;
+# action exit
 # precondition: any of the chess is at the goal position
 # postcondition: remove one of the chess satisfy the precondition from the board,
-#                and add an action "EXIT from (x, y)"
+#                and add an action "EXIT from (x, y)."
+def exit(current_state):
+    colour = current_state["colour"]
+    positions = list(current_state["position"])
+
+    for position in positions:
+        if colour == "red":
+            if position == (-3, -3) or \
+                position == (-3, -2) or \
+                position == (-3, -1) or \
+                position == (-3, 0):
+                action = get_action("EXIT", position, None)
+                positions.remove(position)
+                new_state = make_state(positions, 
+                    action, current_state["block"], current_state, colour)
+                return new_state
+            else:
+                return current_state
+        
+        elif colour == "green":
+            if position == (-3, 3) or \
+                position == (-2, 3) or \
+                position == (-1, 3) or \
+                position == (0, 3):
+                action = get_action("EXIT", position, None)
+                positions.remove(position)
+                new_state = make_state(positions, 
+                    action, current_state["block"], current_state, colour)
+                return new_state
+            else:
+                return current_state
+        
+        elif colour == "blue":
+            if position == (0, -3) or \
+                position == (-1, -2) or \
+                position == (-2, -1) or \
+                position == (-3, 0):
+                action = get_action("EXIT", position, None)
+                positions.remove(position)
+                new_state = make_state(positions, 
+                    action, current_state["block"], current_state, colour)
+                return new_state
+            else:
+                return current_state
 
 def is_goal(current_state):
-    colour = current_state["colour"]
-    position = current_state["position"]
+    positions = list(current_state["position"])
 
-    if colour == "red":
-        if position == (-3, -3) or \
-           position == (-3, -2) or \
-           position == (-3, -1) or \
-           position == (-3, 0):
-            return True
-        else:
-            return False
-    
-    if colour == "green":
-        if position == (-3, 3) or \
-           position == (-2, 3) or \
-           position == (-1, 3) or \
-           position == (0, 3):
-            return True
-        else:
-            return False
-    
-    if colour == "blue":
-        if position == (0, -3) or \
-           position == (-1, -2) or \
-           position == (-2, -1) or \
-           position == (-3, 0):
-            return True
-        else:
-            return False
+    if len(positions) == 0:
+        return True
 
     return False
 
