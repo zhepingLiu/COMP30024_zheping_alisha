@@ -16,10 +16,11 @@ def main():
     with open(sys.argv[1]) as file:
         data = json.load(file)
 
-    # TODO: Search for and output winning sequence of moves
-    start_state = {data["position"], None, data["block"], None, data["colour"]}
+    start_state = make_state(data["pieces"], None, data["blocks"], None, data["colour"])
 
-    a_star(start_state)
+    # Search for and output winning sequence of moves
+    actions = a_star(start_state)
+    print(actions)
 
 # search function body for dfs, bfs and ucs
 # def search(open_list, closed_list, data):
@@ -41,17 +42,28 @@ def main():
 
 #     return None
 
-def make_state(current_position, action, block, previous_state, colour):
-    if current_position == None:
+def make_state(pieces, action, block, previous_state, colour):
+    if pieces == None:
         return None
     else:
+        new_pieces = []
+        # new_piece = (0, 0)
+        for piece in pieces:
+            q = piece[0]
+            r = piece[1]
+            new_pieces.append((q, r))
+            # new_piece = (q, r)
+        
+        new_pieces = frozenset(new_pieces)
+
         current_state = {
-                "position" : current_position,
-                "action" : action,
+                "position": new_pieces,
+                # "position": new_piece,
+                "action": action,
                 "block": block,
-                "previous_state" : previous_state,
-                "colour" : colour
-            }
+                "colour": colour,
+                "previous_state": previous_state
+        }
 
         return current_state
 
@@ -61,10 +73,10 @@ def null_heuristic(state):
 # a star search algorithm
 # return a list of actions from start position to goal position
 def a_star(start_state, heuristic=null_heuristic):
+    from queue import PriorityQueue
     COST = 1
     # priority queue of states to be visited
-    # open_list = PriorityQueue() # this PriorityQueue is from the module in AI planning project
-    open_list = []
+    open_list = PriorityQueue()
     # list of expanded coordinates
     closed_list = []
     # dict of coordinates correspond to the cost from start to it
@@ -74,13 +86,13 @@ def a_star(start_state, heuristic=null_heuristic):
     f_score = {}
 
     g_score[start_state["position"]] = 0
-    f_score[start_state['state']] = heuristic(start_state["position"])
+    f_score[start_state["position"]] = heuristic(start_state["position"])
 
-    open_list.push(start_state, f_score[start_state['position']])
+    open_list.put((-f_score[start_state['position']], start_state))
 
-    while not open_list.isEmpty():
+    while not open_list._qsize() == 0:
 
-        current_state = open_list.pop()
+        current_state = open_list.get()[1]
         closed_list.append(current_state)
 
         if is_goal(current_state):
@@ -92,17 +104,19 @@ def a_star(start_state, heuristic=null_heuristic):
 
             # the cost to get to current successor is the cost to get to
             # currentState + successor cost
-            temp_g_score = g_score[current_state['state']] + COST
+            temp_g_score = g_score[current_state['position']] + COST
             temp_f_score = temp_g_score + \
                 heuristic(successor_state)
 
             # if the gScore for current successor is not recorded, i.e. equals to infinity
-            if (successor_state in g_score.keys()
-                    and temp_g_score >= g_score[successor_state]):
+            if (successor_state["position"] in g_score.keys()
+                    and temp_g_score >= g_score[successor_state["position"]]):
                 continue
             else:
-                open_list.push(successor_state, temp_f_score)
-                g_score[successor_state] = temp_g_score
+                item = (-temp_f_score, successor_state)
+                print(item)
+                open_list.put(item)
+                g_score[successor_state["position"]] = temp_g_score
 
     return construct_goal_actions(current_state)
 
@@ -117,10 +131,10 @@ def construct_goal_actions(current_state):
     goal_actions = []
 
     # re-construct the actions from goal to start
-    while current_state['action']:
+    while current_state["action"]:
       #print(currentState)
-      goal_actions.append(current_state['action'])
-      current_state = current_state['previousState']
+      goal_actions.append(current_state["action"])
+      current_state = current_state["previous_state"]
 
     # return the reverse the goalAction list
     return list(reversed(goal_actions))
@@ -205,22 +219,33 @@ def is_goal(current_state):
     position = current_state["position"]
 
     if colour == "red":
-        if position == (-3, -3) or (-3, -2) or (-3, -1) or (-3, 0):
+        if position == (-3, -3) or \
+           position == (-3, -2) or \
+           position == (-3, -1) or \
+           position == (-3, 0):
             return True
         else:
             return False
     
     if colour == "green":
-        if position == (-3, 3) or (-2, 3) or (-1, 3) or (0, 3):
+        if position == (-3, 3) or \
+           position == (-2, 3) or \
+           position == (-1, 3) or \
+           position == (0, 3):
             return True
         else:
             return False
     
     if colour == "blue":
-        if position == (0, -3) or (-1, -2) or (-2, -1) or (-3, 0):
+        if position == (0, -3) or \
+           position == (-1, -2) or \
+           position == (-2, -1) or \
+           position == (-3, 0):
             return True
         else:
             return False
+
+    return False
 
 def get_game_board():
     game_board = []
