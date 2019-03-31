@@ -64,17 +64,21 @@ def main():
 
 #     return None
 
-def make_state(pieces, action, block, previous_state, colour):
+def make_state(pieces, action, blocks, previous_state, colour):
     if pieces == None:
         return None
     else:
         new_pieces = []
-        # new_piece = (0, 0)
         for piece in pieces:
             q = piece[0]
             r = piece[1]
             new_pieces.append((q, r))
-            # new_piece = (q, r)
+
+        new_blocks = []
+        for block in blocks:
+            q = block[0]
+            r = block[1]
+            new_blocks.append((q, r))
         
         new_pieces = frozenset(new_pieces)
 
@@ -82,7 +86,7 @@ def make_state(pieces, action, block, previous_state, colour):
                 "position": new_pieces,
                 # "position": new_piece,
                 "action": action,
-                "block": block,
+                "block": new_blocks,
                 "colour": colour,
                 "previous_state": previous_state
         }
@@ -203,12 +207,15 @@ def generate_successor(current_state):
                 not position in current_positions and \
                 next_to(current_position, position):
                 # generate all successors with action JUMP
-                action = get_action("JUMP", current_position, position)
-                new_positions = [x for x in current_positions if x != current_position]
-                new_positions.append(position)
-                successor.append(make_state(new_positions, action,
-                                            current_state['block'], current_state, 
-                                            current_state["colour"]))
+                jump_position = jump(current_position, position)
+                if jump_position[0]:
+                    jump_position = jump_position[1]
+                    action = get_action("JUMP", current_position, jump_position)
+                    new_positions = [x for x in current_positions if x != current_position]
+                    new_positions.append(jump_position)
+                    successor.append(make_state(new_positions, action,
+                                                current_state['block'], current_state, 
+                                                current_state["colour"]))
 
             elif not position in current_state['block'] and \
                 not position in current_positions and \
@@ -250,6 +257,8 @@ def next_to(position_1, position_2):
 def jump(position, block):
     (q1, r1) = position
     (q2, r2) = block
+    q = -4
+    r = -4
 
     if q1 == q2 and r1 - r2 == 1:
         q = q1
@@ -265,10 +274,10 @@ def jump(position, block):
         r = r1
 
     if r <= 3 and r >= -3 and q <= 3 and r >= -3:
-        # when the tile is out of range, return empty
-        return (q, r)
+        return (True, (q, r))
     
-    return None
+    # when the tile is out of range, return empty
+    return (False, None)
 
 # action exit
 # precondition: any of the chess is at the goal position
