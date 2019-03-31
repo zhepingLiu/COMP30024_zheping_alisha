@@ -89,12 +89,12 @@ def make_state(pieces, action, block, previous_state, colour):
 
         return current_state
 
-def null_heuristic(state):
+def null_heuristic(current_state):
     return 0
 
-def manhattan_heuristic(position, colour):
+def manhattan_distance(position, colour):
     if colour == "red":
-        goal = [[-3,-3], [-2,-2], [-3,-1], [-3, 0]]
+        goal = [[3,-3], [3,-2], [3,-1], [3, 0]]
     elif colour == "green":
         goal = [[-3, 3], [-2, 3], [-1, 3], [0, 3]]
     elif colour == "blue":
@@ -107,8 +107,18 @@ def manhattan_heuristic(position, colour):
         temp_dist = (abs(position[0] - goal[i][0]) + abs(position[0] + position[1] - goal[i][0] - goal[i][1]) + abs(position[1] - goal[i][1]))/2
         if temp_dist < dist0:
             dist0 = temp_dist
+
     return int(dist0)
+
+def manhattan_heuristic(current_state):
+    positions = list(current_state["position"])
+    colour = current_state["colour"]
+
+    heuristic = 0
+    for position in positions:
+        heuristic += manhattan_distance(position, colour)
     
+    return heuristic
 
 # a star search algorithm
 # return a list of actions from start position to goal position
@@ -125,7 +135,7 @@ def a_star(start_state, heuristic=null_heuristic):
     f_score = {}
 
     g_score[start_state["position"]] = 0
-    f_score[start_state["position"]] = heuristic(start_state["position"])
+    f_score[start_state["position"]] = heuristic(start_state)
 
     open_list.push(start_state, -f_score[start_state['position']])
 
@@ -226,7 +236,8 @@ def next_to(position_1, position_2):
     elif r1 == r2 and abs(q1 - q2) == 1:
         # same row case
         return True
-    elif abs(r1 - r2) == 1 and abs(q1 - q2) == 1:
+    elif abs(r1 - r2) == 1 and abs(q1 - q2) == 1 and \
+        (r1 - r2) + (q1 - q2) == 0:
         # third case, e.g. (0, -3) and (-1, -2)
         return True
 
@@ -265,14 +276,15 @@ def exit(current_state):
 
     for position in positions:
         if colour == "red":
-            if position == (-3, -3) or \
-                position == (-3, -2) or \
-                position == (-3, -1) or \
-                position == (-3, 0):
+            if position == (3, -3) or \
+                position == (3, -2) or \
+                position == (3, -1) or \
+                position == (3, 0):
                 action = get_action("EXIT", position, None)
                 positions.remove(position)
                 new_state = make_state(positions, 
                     action, current_state["block"], current_state, colour)
+                print(new_state)
                 return new_state
             else:
                 return current_state
@@ -313,8 +325,8 @@ def is_goal(current_state):
 
 def get_game_board():
     game_board = []
-    for q in range(-3, 3):
-        for r in range(-3, 3):
+    for q in range(-3, 4):
+        for r in range(-3, 4):
             game_board.append((q,r))
 
     return game_board
