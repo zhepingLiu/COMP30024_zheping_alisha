@@ -199,7 +199,9 @@ def generate_successor(current_state):
     
     for position in game_board:
         for current_position in current_positions:
-            if (position in current_state['block']) and (next_to(current_position, position)):
+            if position in current_state['block'] and \
+                not position in current_positions and \
+                next_to(current_position, position):
                 # generate all successors with action JUMP
                 action = get_action("JUMP", current_position, position)
                 new_positions = [x for x in current_positions if x != current_position]
@@ -208,7 +210,9 @@ def generate_successor(current_state):
                                             current_state['block'], current_state, 
                                             current_state["colour"]))
 
-            elif not position in current_state['block'] and next_to(current_position, position):
+            elif not position in current_state['block'] and \
+                not position in current_positions and \
+                next_to(current_position, position):
                 # generate all successors with action MOVE
                 action = get_action("MOVE", current_position, position)
                 new_positions = [x for x in current_positions if x != current_position]
@@ -284,7 +288,6 @@ def exit(current_state):
                 positions.remove(position)
                 new_state = make_state(positions, 
                     action, current_state["block"], current_state, colour)
-                print(new_state)
                 return new_state
             else:
                 return current_state
