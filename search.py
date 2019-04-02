@@ -12,7 +12,6 @@ import heapq
 # A Priority queue implemented using heapq
 # Reference: https://segmentfault.com/a/1190000010007858
 class PriorityQueue:
-
     def __init__(self):
         self._index = 0
         self._queue = []
@@ -32,56 +31,52 @@ class PriorityQueue:
 
 def main():
     # the file contains three entries:
-    #   colour: declaring which colour the palyer is playing, default to be "red"
-    #   pieces: specifying the starting position of the player's piece(s), default number is one
+    #   colour: declaring which colour the palyer is playing, 
+    #           default to be "red"
+    #   pieces: specifying the starting position of the player's piece(s), 
+    #           default number is one
     #   blocks: specifying the position of any blocks on 
     with open(sys.argv[1]) as file:
         data = json.load(file)
 
-    start_state = make_state(data["pieces"], None, data["blocks"], None, data["colour"])
+    # make the initial state using the contents in data file,
+    # where "action" and "previous_state" are left with None
+    start_state = make_state(data["pieces"], None, data["blocks"], 
+                             None, data["colour"])
 
     # Search for and output winning sequence of moves
     actions = a_star(start_state)
-    print(actions)
+    print_goal_actions(actions)
 
-# search function body for dfs, bfs and ucs
-# def search(open_list, closed_list, data):
-#     start_state = {data["position"], None, data["block"], None, data["colour"]}
-#     open_list.push(start_state)
-
-#     while not open_list.isEmpty():
-#         # pop a state from openList
-#         current_state = open_list.pop()
-
-#         if is_goal(current_state):
-#             return current_state
-
-#         if not current_state["position"] in closed_list:
-#           # add the current state into visited
-#           closed_list.append(current_state["position"])
-#           for successor in generate_successor(current_state):
-#               open_list.push(successor)
-
-#     return None
-
+# make a game state
+# Input: pieces: the existing pieces on the game board
+#        action: last action performed
+#        blocks: the existing blocks on the game board
+#        previous_state: previous game state
+#        colour: the colour of our pieces
+# Output: a game state represented by a dict with 5 attributes
 def make_state(pieces, action, blocks, previous_state, colour):
+    # if there are no pieces specified, return None
     if pieces == None:
         return None
     else:
         new_pieces = []
+        # convert coordinates of all pieces to tuple form, i.e. (q, r)
         for piece in pieces:
             q = piece[0]
             r = piece[1]
             new_pieces.append((q, r))
 
+        # convert coordinates of all pieces to tuple form, i.e. (q, r)
         new_blocks = []
         for block in blocks:
             q = block[0]
             r = block[1]
             new_blocks.append((q, r))
         
+        # convert the list of pieces to a frozenset (frozenset is hashable)
         new_pieces = frozenset(new_pieces)
-
+        # make the state
         current_state = {
                 "position": new_pieces,
                 # "position": new_piece,
@@ -90,12 +85,17 @@ def make_state(pieces, action, blocks, previous_state, colour):
                 "colour": colour,
                 "previous_state": previous_state
         }
-
         return current_state
 
+# null heuristic that always return 0
 def null_heuristic(current_state):
     return 0
 
+# computing the manhattan distance from a piece to its closest goal on
+# the hex game board 
+# Input: position: the coordinate of a piece
+#        colour: the colour of the input piece
+# Output: the shortest distance between the piece and the goal
 def manhattan_distance(position, colour):
     if colour == "red":
         goal = [[3,-3], [3,-2], [3,-1], [3, 0]]
@@ -104,17 +104,25 @@ def manhattan_distance(position, colour):
     elif colour == "blue":
         goal = [[0, -3], [-1, -2], [-2, -1],[-3, 0]]
         
-    #function hex_distance(a, b):
-    #return (abs(a.q - b.q) + abs(a.q + a.r - b.q - b.r) + abs(a.r - b.r)) / 2
-    dist0 = (abs(position[0] - goal[0][0]) + abs(position[0] + position[1] - goal[0][0] - goal[0][1]) + abs(position[1] - goal[0][1]))/2
+    dist0 = (abs(position[0] - goal[0][0]) + abs(position[0] + position[1] 
+            - goal[0][0] - goal[0][1]) + abs(position[1] - goal[0][1])) / 2
+
+    # take the minimum distance (to make sure the heuristic is admissible) from
+    # distances to all goals
     for i in range(1,4):
-        temp_dist = (abs(position[0] - goal[i][0]) + abs(position[0] + position[1] - goal[i][0] - goal[i][1]) + abs(position[1] - goal[i][1]))/2
+        temp_dist = (abs(position[0] - goal[i][0]) + abs(position[0] 
+                    + position[1] - goal[i][0] - goal[i][1]) + 
+                    abs(position[1] - goal[i][1])) / 2
         if temp_dist < dist0:
             dist0 = temp_dist
 
     return int(dist0)
 
+# computing the sum of the distances from all pieces to their closest goals
+# Input: current_state: the current state of the game
+# Output: the sum of the distances from all pieces to their closest goals
 def manhattan_heuristic(current_state):
+    # current_state["position"] is frozenset, convert it back to a list
     positions = list(current_state["position"])
     colour = current_state["colour"]
 
@@ -124,8 +132,10 @@ def manhattan_heuristic(current_state):
     
     return heuristic
 
-# a star search algorithm
-# return a list of actions from start position to goal position
+# A-star search algorithm
+# Input: start_state: the initial state of the game
+#        heuristic: the given heuristic for A-star
+# Output: a list of actions to move all pieces out of the game board
 def a_star(start_state, heuristic=null_heuristic):
     COST = 1
     # priority queue of states to be visited
@@ -141,32 +151,37 @@ def a_star(start_state, heuristic=null_heuristic):
     g_score[start_state["position"]] = 0
     f_score[start_state["position"]] = heuristic(start_state)
 
-    open_list.push(start_state, f_score[start_state['position']])
+    open_list.push(start_state, f_score[start_state["position"]])
 
     while not open_list.is_empty():
 
         current_state = open_list.pop()
         closed_list.append(current_state["position"])
 
-        # TODO: we have to put the action exit somewhere
+        # if any piece can exit the board, update the current game state to
+        # exit that piece
         temp_g_score = g_score[current_state["position"]]
         current_state = exit(current_state)
         g_score[current_state["position"]] = temp_g_score
 
+        # if the goal is achieved, break the loop
         if is_goal(current_state):
             break
 
         for successor_state in generate_successor(current_state):
+            # skip if the same combination of pieces coordinates has already
+            # been visited
             if successor_state["position"] in closed_list:
                 continue
 
             # the cost to get to current successor is the cost to get to
             # currentState + successor cost
-            temp_g_score = g_score[current_state['position']] + COST
+            temp_g_score = g_score[current_state["position"]] + COST
             temp_f_score = temp_g_score + \
                 heuristic(successor_state)
 
-            # if the gScore for current successor is not recorded, i.e. equals to infinity
+            # if the gScore for current successor is not recorded, 
+            # i.e. equals to infinity
             if (successor_state["position"] in g_score.keys()
                     and temp_g_score >= g_score[successor_state["position"]]):
                 continue
@@ -176,10 +191,11 @@ def a_star(start_state, heuristic=null_heuristic):
 
     return construct_goal_actions(current_state)
 
-
-def construct_goal_actions(current_state):
-
-    if current_state == None:
+# construct the list of actions from the start state to the given game state
+# Input: game_state: the given game state
+# Output: a list of actions from the start state to the give game state
+def construct_goal_actions(game_state):
+    if game_state == None:
       print("No solution found")
       return []
 
@@ -187,56 +203,74 @@ def construct_goal_actions(current_state):
     goal_actions = []
 
     # re-construct the actions from goal to start
-    while current_state["action"]:
+    while game_state["action"]:
       #print(currentState)
-      goal_actions.append(current_state["action"])
-      current_state = current_state["previous_state"]
+      goal_actions.append(game_state["action"])
+      game_state = game_state["previous_state"]
 
     # return the reverse the goalAction list
     return list(reversed(goal_actions))
 
-# generate successor states for a particular state
-def generate_successor(current_state):
+# generate successor states for a given game state
+# Input: game_state: the given game state
+# Output: list of successors of the given game state
+def generate_successor(game_state):
     successor = []
-    current_positions = current_state['position']
+    current_positions = game_state["position"]
     game_board = get_game_board()
     
+    # scan the board to find all possible actions for each piece
     for position in game_board:
         for current_position in current_positions:
-            if position in current_state['block'] and \
-                not position in current_positions and \
+            # if the position is a block and it is next to the current piece
+            if position in game_state["block"] and \
                 next_to(current_position, position):
-                # generate all successors with action JUMP
+                # generate the successor coordinate by applying action JUMP
                 jump_position = jump(current_position, position)
-                if jump_position[0]:
+                # if there is a possible JUMP coordinate and this coordinate
+                # is not occupied by other pieces
+                if jump_position[0] and \
+                    jump_position[1] not in current_positions:
+                    # generate the successor state
                     jump_position = jump_position[1]
                     action = get_action("JUMP", current_position, jump_position)
-                    new_positions = [x for x in current_positions if x != current_position]
+                    new_positions = [x for x in current_positions 
+                                     if x != current_position]
                     new_positions.append(jump_position)
                     successor.append(make_state(new_positions, action,
-                                                current_state['block'], current_state, 
-                                                current_state["colour"]))
-
-            elif not position in current_state['block'] and \
+                                                game_state["block"], game_state, 
+                                                game_state["colour"]))
+            # else if the position is not a block and it is not occupied by
+            # other pieces and it is next to the current piece
+            elif not position in game_state["block"] and \
                 not position in current_positions and \
                 next_to(current_position, position):
-                # generate all successors with action MOVE
+                # generate all successor states by applying action MOVE
                 action = get_action("MOVE", current_position, position)
-                new_positions = [x for x in current_positions if x != current_position]
+                new_positions = [x for x in current_positions 
+                                 if x != current_position]
                 new_positions.append(position)
                 successor.append(make_state(new_positions, action, 
-                                            current_state['block'], current_state,
-                                            current_state["colour"]))
+                                            game_state["block"], game_state,
+                                            game_state["colour"]))
     
     return successor
 
-
+# generate the action in the specified format
+# Input: action_name: name of the action, includes "MOVE", "JUMP", "EXIT"
+# Output: the action in specified format
 def get_action(action_name, position_1, position_2):
     if not position_2 == None:
+        # generate MOVE and JUMP action
         return "%s from %s to %s." % (action_name, position_1, position_2)
     else:
+        # generate EXIT action
         return "%s from %s." % (action_name, position_1)
 
+# check if two positions are next to each other on the hex game board
+# Input: position_1: given position 1
+#        position_2: given position 2
+# Output: True if they are next to each other, otherwise False
 def next_to(position_1, position_2):
     (q1, r1) = position_1
     (q2, r2) = position_2
@@ -254,11 +288,17 @@ def next_to(position_1, position_2):
 
     return False
 
+# generate the successor coordinate for a piece to JUMP through a block
+# Input: position: the coordinate of the given piece
+#        block: the coordinate of the given block
 def jump(position, block):
+    RAN = range(-3, 4)
+    SENTINEL = -4
+
     (q1, r1) = position
     (q2, r2) = block
-    q = -4
-    r = -4
+    q = SENTINEL
+    r = SENTINEL
 
     if q1 == q2 and r1 - r2 == 1:
         q = q1
@@ -273,73 +313,78 @@ def jump(position, block):
         q = q2 + 1
         r = r1
 
-    if r <= 3 and r >= -3 and q <= 3 and r >= -3:
+    # check if the generated position is in the valid range
+    if (q, r) in get_game_board():
         return (True, (q, r))
     
     # when the tile is out of range, return empty
     return (False, None)
 
-# action exit
-# precondition: any of the chess is at the goal position
-# postcondition: remove one of the chess satisfy the precondition from the board,
-#                and add an action "EXIT from (x, y)."
-def exit(current_state):
-    colour = current_state["colour"]
-    positions = list(current_state["position"])
+# EXIT action
+# Input: game state: a given game state
+# Output: when EXIT is possible, return the game state after performing EXIT,
+#         otherwise, return the unchanged game state
+def exit(game_state):
+    colour = game_state["colour"]
+    positions = list(game_state["position"])
 
     for position in positions:
         if colour == "red":
-            if position == (3, -3) or \
-                position == (3, -2) or \
-                position == (3, -1) or \
-                position == (3, 0):
+            goal = [(3, -3), (3, -2), (3, -1), (3, 0)]
+            if position in goal:
                 action = get_action("EXIT", position, None)
                 positions.remove(position)
                 new_state = make_state(positions, 
-                    action, current_state["block"], current_state, colour)
+                    action, game_state["block"], game_state, colour)
                 return new_state
             else:
-                return current_state
+                return game_state
         
         elif colour == "green":
-            if position == (-3, 3) or \
-                position == (-2, 3) or \
-                position == (-1, 3) or \
-                position == (0, 3):
+            goal = [(-3, 3), (-2, 3), (-1, 3), (0, 3)]
+            if position in goal:
                 action = get_action("EXIT", position, None)
                 positions.remove(position)
                 new_state = make_state(positions, 
-                    action, current_state["block"], current_state, colour)
+                    action, game_state["block"], game_state, colour)
                 return new_state
             else:
-                return current_state
+                return game_state
         
         elif colour == "blue":
-            if position == (0, -3) or \
-                position == (-1, -2) or \
-                position == (-2, -1) or \
-                position == (-3, 0):
+            goal = [(0, -3), (-1, -2), (-2, -1), (-3, 0)]
+            if position in goal:
                 action = get_action("EXIT", position, None)
                 positions.remove(position)
                 new_state = make_state(positions, 
-                    action, current_state["block"], current_state, colour)
+                    action, game_state["block"], game_state, colour)
                 return new_state
             else:
-                return current_state
+                return game_state
 
-def is_goal(current_state):
-    positions = list(current_state["position"])
+# check if the given game state is the goal state (no pieces on the board)
+# Input: game_state: the given game state
+# Output: True if there is no pieces left on the board, False otherwise.
+def is_goal(game_state):
+    positions = list(game_state["position"])
 
     if len(positions) == 0:
         return True
 
     return False
 
+# get all valid coordinates on the game board
 def get_game_board():
     ran = range(-3, 4)
     game_board = [(q, r) for q in ran for r in ran if -q-r in ran]
 
     return game_board
+
+# print the winning actions according to the specified format
+def print_goal_actions(actions):
+    for action in actions:
+        print(action)
+    return
 
 def print_board(board_dict, message="", debug=False, **kwargs):
     """
