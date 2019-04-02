@@ -45,7 +45,7 @@ def main():
                              None, data["colour"])
 
     # Search for and output winning sequence of moves
-    actions = a_star(start_state)
+    actions = a_star(start_state, manhattan_heuristic)
     print_goal_actions(actions)
 
 # make a game state
@@ -87,11 +87,12 @@ def make_state(pieces, action, blocks, previous_state, colour):
         }
         return current_state
 
-# null heuristic that always return 0
+# null heuristic that always return 0, with this heuristic, a_star will perform
+# exactly the same as BFS
 def null_heuristic(current_state):
     return 0
 
-# computing the manhattan distance from a piece to its closest goal on
+# compute the manhattan distance from a piece to its closest goal on
 # the hex game board 
 # Input: position: the coordinate of a piece
 #        colour: the colour of the input piece
@@ -118,7 +119,7 @@ def manhattan_distance(position, colour):
 
     return int(dist0)
 
-# computing the sum of the distances from all pieces to their closest goals
+# compute the sum of the distances from all pieces to their closest goals
 # Input: current_state: the current state of the game
 # Output: the sum of the distances from all pieces to their closest goals
 def manhattan_heuristic(current_state):
@@ -384,6 +385,7 @@ def get_game_board():
 def print_goal_actions(actions):
     for action in actions:
         print(action)
+    print("# Total number of moves is %d" % (len(actions)))
     return
 
 def print_board(board_dict, message="", debug=False, **kwargs):
