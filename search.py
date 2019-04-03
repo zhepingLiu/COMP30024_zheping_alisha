@@ -223,8 +223,11 @@ def generate_successor(game_state):
     # scan the board to find all possible actions for each piece
     for position in game_board:
         for current_position in current_positions:
-            # if the position is a block and it is next to the current piece
-            if position in game_state["block"] and \
+            # if the position is a block or another piece 
+            # and it is next to the current piece
+            if (position in game_state["block"] or
+                (position in current_positions and 
+                not position == current_position)) and \
                 next_to(current_position, position):
                 # generate the successor coordinate by applying action JUMP
                 jump_position = jump(current_position, position)
