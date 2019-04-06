@@ -155,15 +155,8 @@ def a_star(start_state, heuristic=null_heuristic):
     open_list.push(start_state, f_score[start_state["position"]])
 
     while not open_list.is_empty():
-
         current_state = open_list.pop()
         closed_list.append(current_state["position"])
-
-        # if any piece can exit the board, update the current game state to
-        # exit that piece
-        temp_g_score = g_score[current_state["position"]]
-        current_state = exit(current_state)
-        g_score[current_state["position"]] = temp_g_score
 
         # if the goal is achieved, break the loop
         if is_goal(current_state):
@@ -219,6 +212,16 @@ def generate_successor(game_state):
     successor = []
     current_positions = game_state["position"]
     game_board = get_game_board()
+
+    # generate successors by applying EXIT action
+    for current_position in current_positions:
+        if is_sub_goal(current_position, game_state["colour"]):
+            new_positions = [x for x in current_positions
+                             if x != current_position]
+            action = get_action("EXIT", current_position, None)
+            successor.append(make_state(new_positions, action, 
+                            game_state["block"], game_state, 
+                            game_state["colour"]))
     
     # scan the board to find all possible actions for each piece
     for position in game_board:
@@ -324,47 +327,24 @@ def jump(position, block):
     # when the tile is out of range, return empty
     return (False, None)
 
-# EXIT action
-# Input: game state: a given game state
-# Output: when EXIT is possible, return the game state after performing EXIT,
-#         otherwise, return the unchanged game state
-def exit(game_state):
-    colour = game_state["colour"]
-    positions = list(game_state["position"])
+# check if the piece has arrived at the goal position (achieve the sub-goal
+# of the game)
+# Input: piece: the specified piece
+#        colour: the colour of the specified piece
+# Output: return True if the given piece is at any of the goal position,
+#         otherwise return False
+def is_sub_goal(piece, colour):
+    if colour == "red":
+        goal = [(3, -3), (3, -2), (3, -1), (3, 0)]
+    elif colour == "green":
+        goal = [(-3, 3), (-2, 3), (-1, 3), (0, 3)]
+    elif colour == "blue":
+        goal = [(0, -3), (-1, -2), (-2, -1), (-3, 0)]
 
-    for position in positions:
-        if colour == "red":
-            goal = [(3, -3), (3, -2), (3, -1), (3, 0)]
-            if position in goal:
-                action = get_action("EXIT", position, None)
-                positions.remove(position)
-                new_state = make_state(positions, 
-                    action, game_state["block"], game_state, colour)
-                return new_state
-            else:
-                return game_state
-        
-        elif colour == "green":
-            goal = [(-3, 3), (-2, 3), (-1, 3), (0, 3)]
-            if position in goal:
-                action = get_action("EXIT", position, None)
-                positions.remove(position)
-                new_state = make_state(positions, 
-                    action, game_state["block"], game_state, colour)
-                return new_state
-            else:
-                return game_state
-        
-        elif colour == "blue":
-            goal = [(0, -3), (-1, -2), (-2, -1), (-3, 0)]
-            if position in goal:
-                action = get_action("EXIT", position, None)
-                positions.remove(position)
-                new_state = make_state(positions, 
-                    action, game_state["block"], game_state, colour)
-                return new_state
-            else:
-                return game_state
+    if piece in goal:
+        return True
+    
+    return False
 
 # check if the given game state is the goal state (no pieces on the board)
 # Input: game_state: the given game state
