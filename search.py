@@ -2,7 +2,7 @@
 COMP30024 Artificial Intelligence, Semester 1 2019
 Solution to Project Part A: Searching
 
-Authors: Zheping Liu, Alisha
+Authors: Zheping Liu, 683781; Bohan Yang, 814642
 """
 
 import sys
@@ -171,11 +171,8 @@ def a_star(start_state, heuristic=null_heuristic):
             # the cost to get to current successor is the cost to get to
             # currentState + successor cost
             temp_g_score = g_score[current_state["position"]] + COST
-            temp_f_score = temp_g_score + \
-                heuristic(successor_state)
+            temp_f_score = temp_g_score + heuristic(successor_state)
 
-            # if the gScore for current successor is not recorded, 
-            # i.e. equals to infinity
             if (successor_state["position"] in g_score.keys()
                     and temp_g_score >= g_score[successor_state["position"]]):
                 continue
@@ -299,7 +296,6 @@ def next_to(position_1, position_2):
 # Input: position: the coordinate of the given piece
 #        block: the coordinate of the given block
 def jump(position, block):
-    RAN = range(-3, 4)
     SENTINEL = -4
 
     (q1, r1) = position
