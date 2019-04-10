@@ -244,6 +244,7 @@ def generate_successor(game_state):
                     successor.append(make_state(new_positions, action,
                                                 game_state["block"], game_state, 
                                                 game_state["colour"]))
+
             # else if the position is not a block and it is not occupied by
             # other pieces and it is next to the current piece
             elif not position in game_state["block"] and \
