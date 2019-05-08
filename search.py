@@ -234,7 +234,8 @@ def generate_successor(game_state):
                 # if there is a possible JUMP coordinate and this coordinate
                 # is not occupied by other pieces
                 if jump_position[0] and \
-                    jump_position[1] not in current_positions:
+                    jump_position[1] not in current_positions and\
+                    jump_position[1] not in game_state["block"]:
                     # generate the successor state
                     jump_position = jump_position[1]
                     action = get_action("JUMP", current_position, jump_position)
