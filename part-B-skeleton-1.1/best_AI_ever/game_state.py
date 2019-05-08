@@ -1,10 +1,16 @@
 class GameState:
-    def __init__(self, colour, current_pieces, enemy_pieces, exit_positions):
+    def __init__(self, colour, current_pieces, enemy_pieces, exit_positions,
+                 action, expanded_states, number_of_exits):
         self.colour = colour
         self.current_pieces = current_pieces
         self.enemy_pieces = enemy_pieces
         self.exit_positions = exit_positions
-        self.number_of_exits = 0
+        self.action = action
+        self.expanded_states = expanded_states
+        self.number_of_exits = number_of_exits
+
+    def get_colour(self):
+        return self.colour
 
     def get_current_pieces(self):
         return self.current_pieces
@@ -15,10 +21,24 @@ class GameState:
     def get_exit_positions(self):
         return self.exit_positions
 
-    def is_sub_goal(self):
-        for piece in self.current_pieces:
-            if piece in self.exit_positions:
-                return True
+    def get_expanded_states(self):
+        return self.expanded_states
+
+    def get_number_of_exits(self):
+        return self.number_of_exits
+
+    def get_occupied_positions(self):
+        # TODO: return all hexes that are currently occupied, 
+        # including pieces from all teams including ourself
+        occupied_positions = self.current_pieces
+        for _, pieces in self.enemy_pieces.items():
+            occupied_positions += pieces
+
+        return occupied_positions
+
+    def is_sub_goal(self, piece):
+        if piece in self.exit_positions:
+            return True
         
         return False
 
@@ -33,15 +53,17 @@ class GameState:
         #                  ("PASS", None)
         ACTION_NAME = 0
 
-        if action[ACTION_NAME] == "MOVE" or action[ACTION_NAME] == "JUMP":
-            self.update_piece_movement(colour, action)
+        if action[ACTION_NAME] == "MOVE":
+            self.update_moving(colour, action)
+        elif action[ACTION_NAME] == "JUMP":
+            self.update_jumping(colour, action)
         elif action[ACTION_NAME] == "EXIT":
             self.update_exiting(colour, action)
         
         # do nothing if the action is "PASS"
         return
 
-    def update_piece_movement(self, colour, action):
+    def update_moving(self, colour, action):
         ACTION_POSITIONS = 1
         PRE_ACTION_POSITION = 0
         AFTER_ACTION_POSITION = 1
@@ -59,6 +81,11 @@ class GameState:
 
         return
 
+    def update_jumping(self, colour, action):
+        # TODO: by applying action JUMP, the jump medium will turn to
+        # the colour of who ever did the JUMP action
+        return
+
     def update_exiting(self, colour, action):
         ACTION_POSITIONS = 1
         PRE_ACTION_POSITION = 0
@@ -66,6 +93,7 @@ class GameState:
         if colour == self.colour:
             self.current_pieces.remove(
                 action[ACTION_POSITIONS][PRE_ACTION_POSITION])
+            self.number_of_exits += 1
         else:
             self.enemy_pieces[colour].remove(
                 action[ACTION_POSITIONS][PRE_ACTION_POSITION])
