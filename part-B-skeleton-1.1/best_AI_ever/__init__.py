@@ -1,1 +1,1 @@
-from your_team_name.player import ExamplePlayer as Player
+from best_AI_ever.player import Player as Player
