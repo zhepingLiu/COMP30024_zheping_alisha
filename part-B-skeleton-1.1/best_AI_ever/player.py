@@ -4,17 +4,25 @@ class Player:
     def __init__(self, colour):
         self.colour = colour
         self.game_board = self.get_game_board()
+        self.expanded_states = []
+
         start_positions = self.get_start_positions(colour)
         exit_positions = self.get_exit_positions(colour)
         enemy_positions = self.get_enemy_positions(colour)
+        
+        self.current_game_state = GameState(colour, start_positions, 
+                                    enemy_positions, exit_positions)
 
     def action(self):
+        # TODO: this will be the main function that make the player performs like AI
         return ("PASS", None)
 
     def update(self, colour, action):
-        return 0
+        self.current_game_state.update(colour, action)
+        return
 
     def generate_successor(self, game_state):
+        # TODO: similar to the generate_successor function in part A
         successor = []
         current_position = game_state.get_current_pieces()
 
@@ -54,7 +62,8 @@ class Player:
 
         enemy_positions = {}
         for enemy_colour in enemy_colours:
-            enemy_positions[enemy_colour] = self.get_start_positions(enemy_colour)
+            enemy_positions[enemy_colour] = \
+                self.get_start_positions(enemy_colour)
 
         return enemy_positions
 
