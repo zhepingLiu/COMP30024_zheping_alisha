@@ -1,3 +1,5 @@
+from best_AI_ever.game_board import GameBoard as GameBoard
+
 class GameState:
     def __init__(self, colour, current_pieces, enemy_pieces, exit_positions,
                  action, expanded_states, number_of_exits):
@@ -8,6 +10,7 @@ class GameState:
         self.action = action
         self.expanded_states = expanded_states
         self.number_of_exits = number_of_exits
+        self.game_board = GameBoard()
 
     def get_colour(self):
         return self.colour
@@ -119,7 +122,7 @@ class GameState:
         return
 
     def turn_piece(self, pre_position, after_position, colour):
-        taken_piece = self.get_jump_medium(pre_position, after_position)
+        taken_piece = self.game_board.get_jump_medium(pre_position, after_position)
         # if the colour of the taken piece and the colour of the piece at after_position
         # are not the same, change the colour of the taken piece to the colour of the piece at after_position
         if colour == self.colour:
@@ -146,28 +149,3 @@ class GameState:
                         self.enemy_pieces[colour].append(taken_piece)
                         return
         return
-
-
-    def get_jump_medium(self, position_1, position_2):
-        # TODO: return the medium position between a jump action
-        # Assumption: the jump action is valid
-        SENTINEL = -4
-        (q1, r1) = position_1
-        (q2, r2) = position_2
-        q = SENTINEL
-        r = SENTINEL
-
-        if q1 == q2 and r1 - r2 == 2:
-            q = q1
-            r = r1 - 1
-        elif q1 == q2 and r1 - r2 == -2:
-            q = q1
-            r = r1 + 1
-        elif r1 == r2 and q1 - q2 == 2:
-            q = q1 - 1
-            r = r1
-        elif r1 == r2 and q1 - q2 == -2:
-            q = q1 + 1
-            r = r1
-        
-        return (q, r)

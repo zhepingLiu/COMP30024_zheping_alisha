@@ -67,3 +67,35 @@ class GameBoard:
 
         # when the tile is out of range, return empty
         return (False, None)
+
+    def get_jump_medium(self, position_1, position_2):
+        # TODO: return the medium position between a jump action
+        # Assumption: the jump action is valid
+        SENTINEL = -4
+        (q1, r1) = position_1
+        (q2, r2) = position_2
+        q = SENTINEL
+        r = SENTINEL
+
+        if q1 == q2 and r1 - r2 == 2:
+            q = q1
+            r = r1 - 1
+        elif q1 == q2 and r1 - r2 == -2:
+            q = q1
+            r = r1 + 1
+        elif r1 == r2 and q1 - q2 == 2:
+            q = q1 - 1
+            r = r1
+        elif r1 == r2 and q1 - q2 == -2:
+            q = q1 + 1
+            r = r1
+        elif q1 - q2 == -2 and r1 - r2 == 2:
+            # e.g. (-1,0) and (1,-2)
+            q = q1 + 1
+            r = r1 - 1
+        elif q1 - q2 == 2 and r1 - r2 ==-2:
+            # e.g. (2,1) and (0,3)
+            q = q1 - 1
+            r = r1 + 1
+
+        return (q, r)
