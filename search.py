@@ -161,12 +161,14 @@ def a_star(start_state, heuristic=null_heuristic):
 
         # if the goal is achieved, break the loop
         if is_goal(current_state):
-            break
+            return construct_goal_actions(current_state)
+
 
         for successor_state in generate_successor(current_state):
             # skip if the same combination of pieces coordinates has already
             # been visited
-            if successor_state["position"] in closed_list:
+            # if successor_state["position"] in closed_list:
+            if successor_state in closed_list:
                 continue
 
             # the cost to get to current successor is the cost to get to
@@ -174,14 +176,12 @@ def a_star(start_state, heuristic=null_heuristic):
             temp_g_score = g_score[current_state["position"]] + COST
             temp_f_score = temp_g_score + heuristic(successor_state)
 
-            if (successor_state["position"] in g_score.keys()
-                    and temp_g_score >= g_score[successor_state["position"]]):
-                continue
-            else:
+            if successor_state["position"] not in g_score or g_score[successor_state["position"]] > temp_g_score:
                 open_list.push(successor_state, temp_f_score)
                 g_score[successor_state["position"]] = temp_g_score
 
     return construct_goal_actions(current_state)
+
 
 # construct the list of actions from the start state to the given game state
 # Input: game_state: the given game state
@@ -203,65 +203,68 @@ def construct_goal_actions(game_state):
     # return the reverse the goalAction list
     return list(reversed(goal_actions))
 
-# generate successor states for a given game state
-# Input: game_state: the given game state
-# Output: list of successors of the given game state
 def generate_successor(game_state):
-    successor = []
-    current_positions = game_state["position"]
-    game_board = get_game_board()
+    exit_successors = generate_exit_successor(game_state)
+    jump_successors = generate_jump_successor(game_state)
+    move_successors = generate_move_successor(game_state)
 
-    # generate successors by applying EXIT action
-    for current_position in current_positions:
-        if is_sub_goal(current_position, game_state["colour"]):
-            new_positions = [x for x in current_positions
-                             if x != current_position]
-            action = get_action("EXIT", current_position, None)
-            successor.append(make_state(new_positions, action, 
-                            game_state["block"], game_state, 
-                            game_state["colour"]))
-    
-    # scan the board to find all possible actions for each piece
-    for position in game_board:
-        for current_position in current_positions:
-            # if the position is a block or another piece 
-            # and it is next to the current piece
-            if (position in game_state["block"] or
-                (position in current_positions and 
-                not position == current_position)) and \
-                next_to(current_position, position):
-                # generate the successor coordinate by applying action JUMP
-                jump_position = jump(current_position, position)
-                # if there is a possible JUMP coordinate and this coordinate
-                # is not occupied by other pieces
-                if jump_position[0] and \
-                    jump_position[1] not in current_positions and\
-                    jump_position[1] not in game_state["block"]:
-                    # generate the successor state
-                    jump_position = jump_position[1]
-                    action = get_action("JUMP", current_position, jump_position)
-                    new_positions = [x for x in current_positions 
-                                     if x != current_position]
-                    new_positions.append(jump_position)
-                    successor.append(make_state(new_positions, action,
-                                                game_state["block"], game_state, 
+    successor = exit_successors + jump_successors + move_successors
+
+    return successor
+
+def generate_exit_successor(game_state):
+    exit_successors = []
+    current_pieces = game_state["position"]
+
+    for piece in current_pieces:
+        if is_sub_goal(piece, game_state["colour"]):
+            new_pieces = [x for x in current_pieces if x != piece]
+            action = get_action("EXIT", piece, None)
+            exit_successors.append(make_state(new_pieces, action, 
+                                        game_state["block"], game_state, 
+                                        game_state["colour"]))
+
+    return exit_successors
+
+def generate_jump_successor(game_state):
+    jump_successors = []
+    current_pieces = game_state["position"]
+    occupied_pieces = list(game_state["position"]) + game_state["block"]
+
+    for position in occupied_pieces:
+        for piece in current_pieces:
+            if next_to(position, piece):
+                jump_destination = jump(piece, position)
+                if jump_destination[0] and \
+                    jump_destination[1] not in occupied_pieces:
+                    jump_destination = jump_destination[1]
+                    action = get_action("JUMP", piece, jump_destination)
+                    new_pieces = [x for x in current_pieces if x != piece]
+                    new_pieces.append(jump_destination)
+                    jump_successors.append(make_state(new_pieces, action,
+                                                game_state["block"], game_state,
                                                 game_state["colour"]))
 
-            # else if the position is not a block and it is not occupied by
-            # other pieces and it is next to the current piece
-            elif not position in game_state["block"] and \
-                not position in current_positions and \
-                next_to(current_position, position):
-                # generate all successor states by applying action MOVE
-                action = get_action("MOVE", current_position, position)
-                new_positions = [x for x in current_positions 
-                                 if x != current_position]
-                new_positions.append(position)
-                successor.append(make_state(new_positions, action, 
+    return jump_successors
+
+def generate_move_successor(game_state):
+    move_successors = []
+    current_pieces = game_state["position"]
+    occupied_pieces = list(game_state["position"]) + game_state["block"]
+    game_board = get_game_board()
+
+    for position in game_board:
+        for piece in current_pieces:
+            if position not in occupied_pieces and \
+                next_to(position, piece):
+                action = get_action("MOVE", piece, position)
+                new_pieces = [x for x in current_pieces if x != piece]
+                new_pieces.append(position)
+                move_successors.append(make_state(new_pieces, action,
                                             game_state["block"], game_state,
                                             game_state["colour"]))
-    
-    return successor
+
+    return move_successors
 
 # generate the action in the specified format
 # Input: action_name: name of the action, includes "MOVE", "JUMP", "EXIT"
@@ -279,19 +282,13 @@ def get_action(action_name, position_1, position_2):
 #        position_2: given position 2
 # Output: True if they are next to each other, otherwise False
 def next_to(position_1, position_2):
+    HEX_STEPS = [(-1, 0), (0, -1), (1, -1), (1, 0), (0, 1), (-1, 1)]
     (q1, r1) = position_1
     (q2, r2) = position_2
 
-    if q1 == q2 and abs(r1 - r2) == 1:
-        # same column case
-        return True
-    elif r1 == r2 and abs(q1 - q2) == 1:
-        # same row case
-        return True
-    elif abs(r1 - r2) == 1 and abs(q1 - q2) == 1 and \
-        (r1 - r2) + (q1 - q2) == 0:
-        # third case, e.g. (0, -3) and (-1, -2)
-        return True
+    for step_q, step_r in HEX_STEPS:
+        if (q1 + step_q, r1 + step_r) == (q2, r2):
+            return True
 
     return False
 
@@ -299,13 +296,12 @@ def next_to(position_1, position_2):
 # Input: position: the coordinate of the given piece
 #        block: the coordinate of the given block
 def jump(position, block):
+    # HEX_STEPS = [(-1, 0), (0, -1), (1, -1), (1, 0), (0, 1), (-1, 1)]
     SENTINEL = -4
-
     (q1, r1) = position
     (q2, r2) = block
     q = SENTINEL
     r = SENTINEL
-
     if q1 == q2 and r1 - r2 == 1:
         q = q1
         r = r2 - 1
@@ -318,6 +314,14 @@ def jump(position, block):
     elif r1 == r2 and q1 - q2 == -1:
         q = q2 + 1
         r = r1
+    elif q1 - q2 == -1 and r1 - r2 == 1:
+        # e.g. (-1,0) and (0,-1)
+        q = q1 + 2
+        r = r1 - 2
+    elif r1 - r2 == -1 and q1 - q2 == 1:
+        # e.g. (2,1) and (1,2)
+        q = q1 - 2
+        r = r1 + 2
 
     # check if the generated position is in the valid range
     if (q, r) in get_game_board():
