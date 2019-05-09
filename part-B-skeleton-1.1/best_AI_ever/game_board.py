@@ -14,13 +14,13 @@ class GameBoard:
 
     """
     Check if two positions are next to each other on the hex game board
-    Input: piece_1: given position 1
-           piece_2: given position 2
+    Input: position_1: given position 1
+           position_2: given position 2
     Output: True if they are next to each other, otherwise False
     """
-    def next_to(self, piece_1, piece_2):
-        (q1, r1) = piece_1
-        (q2, r2) = piece_2
+    def next_to(self, position_1, position_2):
+        (q1, r1) = position_1
+        (q2, r2) = position_2
 
         if q1 == q2 and abs(r1 - r2) == 1:
             # same column case
@@ -37,13 +37,13 @@ class GameBoard:
 
     """
     Generate the successor coordinate for a piece to JUMP through a block
-    Input: piece_1: the coordinate of the given piece
-           piece_2: the coordinate of the given block
+    Input: position_1: the coordinate of the given piece
+           position_2: the coordinate of the given block
     """
-    def jump(self, piece_1, piece_2):
+    def jump(self, position_1, position_2):
         SENTINEL = -4
-        (q1, r1) = piece_1
-        (q2, r2) = piece_2
+        (q1, r1) = position_1
+        (q2, r2) = position_2
         q = SENTINEL
         r = SENTINEL
         if q1 == q2 and r1 - r2 == 1:
