@@ -129,10 +129,10 @@ def manhattan_heuristic(current_state):
 
     heuristic = 0
     for position in positions:
-        heuristic += manhattan_distance(position, colour)
+        # assuming all moves are jump (move distance = 2), + 1 exit action
+        heuristic += (manhattan_distance(position, colour) / 2 + 1)
     
-    # assuming all moves are jump (move distance = 2), + 1 exit action
-    return heuristic / 2 + 1
+    return heuristic
 
 # A-star search algorithm
 # Input: start_state: the initial state of the game
