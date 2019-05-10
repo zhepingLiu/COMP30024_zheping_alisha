@@ -2,13 +2,13 @@ from best_AI_ever.game_board import GameBoard as GameBoard
 
 class GameState:
     def __init__(self, colour, current_pieces, enemy_pieces, exit_positions,
-                 action, expanded_states, number_of_exits):
+                 action, previous_state, number_of_exits):
         self.colour = colour
         self.current_pieces = current_pieces
         self.enemy_pieces = enemy_pieces
         self.exit_positions = exit_positions
         self.action = action
-        self.expanded_states = expanded_states
+        self.previous_state = previous_state
         self.number_of_exits = number_of_exits
         self.game_board = GameBoard()
 
@@ -18,14 +18,23 @@ class GameState:
     def get_current_pieces(self):
         return self.current_pieces
 
+    def get_frozenset_current_pieces(self):
+        return frozenset(self.current_pieces)
+
     def get_enemy_pieces(self):
         return self.enemy_pieces
+
+    def get_frozenset_enemy_pieces(self):
+        return frozenset(self.enemy_pieces)
 
     def get_exit_positions(self):
         return self.exit_positions
 
-    def get_expanded_states(self):
-        return self.expanded_states
+    def get_action(self):
+        return self.action
+
+    def get_previous_state(self):
+        return self.previous_state
 
     def get_number_of_exits(self):
         return self.number_of_exits
@@ -114,7 +123,7 @@ class GameState:
         if colour == self.colour:
             self.current_pieces.remove(
                 action[ACTION_POSITIONS][PRE_ACTION_POSITION])
-            self.number_of_exits += 1
+            # self.number_of_exits += 1
         else:
             self.enemy_pieces[colour].remove(
                 action[ACTION_POSITIONS][PRE_ACTION_POSITION])
@@ -149,3 +158,14 @@ class GameState:
                         self.enemy_pieces[colour].append(taken_piece)
                         return
         return
+
+    def construct_goal_actions(self):
+        goal_actions = []
+
+        game_state = self
+
+        while game_state.get_previous_state() != None:
+            goal_actions.append(game_state.get_action())
+            game_state = game_state.get_previous_state()
+
+        return list(reversed(goal_actions))

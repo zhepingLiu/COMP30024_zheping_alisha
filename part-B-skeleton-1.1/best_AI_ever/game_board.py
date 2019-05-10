@@ -1,15 +1,12 @@
 class GameBoard:
     def __init__(self):
-        self.game_board = self.get_game_board()
+        ran = range(-3, 4)
+        self.game_board = [(q, r) for q in ran for r in ran if -q-r in ran]
 
     """
     Get all valid coordinates on the game board
     """
     def get_game_board(self):
-        if self.game_board == None:
-            ran = range(-3, 4)
-            self.game_board = [(q, r) for q in ran for r in ran if -q-r in ran]
-
         return self.game_board
 
     """
