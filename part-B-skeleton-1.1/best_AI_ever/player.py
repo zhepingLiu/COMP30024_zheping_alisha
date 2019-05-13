@@ -9,12 +9,13 @@ class Player:
         self.expanded_states = []
 
         start_positions = self.get_start_positions(colour)
-        exit_positions = self.get_exit_positions(colour)
+        exit_positions = self.get_exit_positions()
         enemy_positions = self.get_enemy_positions(colour)
-        
+        number_of_exits = {"red": 0, "green": 0, "blue": 0}
         self.game_state = GameState(colour, start_positions, enemy_positions, 
                                     exit_positions, action=None, 
-                                    previous_state=None, number_of_exits=0)
+                                    previous_state=None, number_of_exits=
+                                    number_of_exits)
 
     def action(self):
         # TODO: this will be the main function that make the player performs like AI
@@ -24,7 +25,7 @@ class Player:
         self.game_state.update(colour, action)
         return
 
-    def a_star_search(self, game_state):
+    def a_star_search(self, game_state, colour):
         COST = 1
         heuristic = self.manhattan_heuristic
         # priority queue of states to be visited
@@ -39,31 +40,27 @@ class Player:
 
         # use the tuple of our teams pieces and the other teams' pieces as
         # the key to each different state 
-        game_state_pieces = (game_state.get_frozenset_current_pieces(),
-                       game_state.get_frozenset_enemy_pieces())
+        game_state_pieces = game_state.get_frozenset_pieces(colour)
         g_score[game_state_pieces] = 0
-        f_score[game_state_pieces] = 0 + heuristic(game_state)
+        f_score[game_state_pieces] = 0 + heuristic(game_state, colour)
 
         open_list.push(game_state, f_score[game_state_pieces])
 
         while not open_list.is_empty():
             current_state = open_list.pop()
+            # current_state.print_game_state()
             # skip if the same combination of all pieces has already been 
             # visited before
-            current_pieces = (current_state.get_frozenset_current_pieces(),
-                              current_state.get_frozenset_enemy_pieces())
+            current_pieces = current_state.get_frozenset_pieces(colour)
             closed_list.append(current_pieces)
 
             # if the current state is the goal, return the actions to this state
-            if current_state.is_goal():
+            if current_state.is_goal(colour):
                 return current_state.construct_goal_actions()
 
-            for successor_state in self.generate_successor(current_state):
-
-                successor_pieces = (successor_state.
-                                    get_frozenset_current_pieces(),
-                                    successor_state.
-                                    get_frozenset_enemy_pieces())
+            for successor_state in self.generate_successor(current_state, 
+                                                           colour):
+                successor_pieces = successor_state.get_frozenset_pieces(colour)
                 if successor_pieces in closed_list:
                     continue
 
@@ -73,7 +70,8 @@ class Player:
 
                 if successor_pieces not in g_score or \
                     g_score[successor_pieces] > temp_g_score:
-                    temp_f_score = temp_g_score + heuristic(successor_state)
+                    temp_f_score = temp_g_score + heuristic(successor_state, 
+                                                            colour)
                     open_list.push(successor_state, temp_f_score)
                     g_score[successor_pieces] = temp_g_score
 
@@ -81,21 +79,21 @@ class Player:
         print("No solution found")
         return []
 
-    def generate_successor(self, game_state):
-        exit_successors = self.generate_exit_successor(game_state)
-        jump_successors = self.generate_jump_successor(game_state)
-        move_successors = self.generate_move_successor(game_state)
+    def generate_successor(self, game_state, colour):
+        exit_successors = self.generate_exit_successor(game_state, colour)
+        jump_successors = self.generate_jump_successor(game_state, colour)
+        move_successors = self.generate_move_successor(game_state, colour)
 
         successor = exit_successors + jump_successors + move_successors
 
         return successor
 
-    def generate_exit_successor(self, game_state):
+    def generate_exit_successor(self, game_state, colour):
         exit_successors = []
-        current_pieces = game_state.get_current_pieces()
+        current_pieces = game_state.get_pieces(colour)
 
         for piece in current_pieces:
-            if game_state.is_sub_goal(piece):
+            if game_state.is_sub_goal(piece, colour):
                 new_pieces = [x for x in current_pieces if x != piece]
                 action = self.get_action("EXIT", piece, None)
                 new_game_state = self.generate_new_game_state(game_state, 
@@ -104,9 +102,9 @@ class Player:
         
         return exit_successors
 
-    def generate_jump_successor(self, game_state):
+    def generate_jump_successor(self, game_state, colour):
         jump_successors = []
-        current_pieces = game_state.get_current_pieces()
+        current_pieces = game_state.get_pieces(colour)
         occupied_positions = game_state.get_occupied_positions()
 
         for position in occupied_positions:
@@ -135,9 +133,9 @@ class Player:
 
         return jump_successors
 
-    def generate_move_successor(self, game_state):
+    def generate_move_successor(self, game_state, colour):
         move_successors = []
-        current_pieces = game_state.get_current_pieces()
+        current_pieces = game_state.get_pieces(colour)
         occupied_positions = game_state.get_occupied_positions()
         game_board = self.game_board.get_game_board()
 
@@ -157,13 +155,13 @@ class Player:
                 
     def generate_new_game_state(self, pre_game_state, new_pieces, action):
         colour = pre_game_state.get_colour()
-        enemy_pieces = pre_game_state.get_enemy_pieces()
+        enemy_pieces = pre_game_state.get_enemy_pieces(colour)
         exit_positions = pre_game_state.get_exit_positions()
-        number_of_exits = pre_game_state.get_number_of_exits()
+        number_of_exits = dict(pre_game_state.get_number_of_exits())
 
         # TODO: Temporary handle
         if action[0] == "EXIT":
-            number_of_exits += 1
+            number_of_exits[colour] += 1
 
         return GameState(colour, new_pieces, enemy_pieces, exit_positions, 
                             action, pre_game_state, number_of_exits)
@@ -190,14 +188,12 @@ class Player:
 
         return start_positions
 
-    def get_exit_positions(self, colour):
-        exit_positions = []
-        if colour == "red":
-            exit_positions = [(3, -3), (3, -2), (3, -1), (3, 0)]
-        elif colour == "green":
-            exit_positions = [(-3, 3), (-2, 3), (-1, 3), (0, 3)]
-        elif colour == "blue":
-            exit_positions = [(-3, 0), (-2, -1), (-1, -2), (0, -3)]
+    def get_exit_positions(self):
+        exit_positions = {}
+
+        exit_positions["red"] = [(3, -3), (3, -2), (3, -1), (3, 0)]
+        exit_positions["green"] = [(-3, 3), (-2, 3), (-1, 3), (0, 3)]
+        exit_positions["blue"] = [(-3, 0), (-2, -1), (-1, -2), (0, -3)]
 
         return exit_positions
 
@@ -248,10 +244,9 @@ class Player:
     # compute the sum of the distances from all pieces to their closest goals
     # Input: current_state: the current state of the game
     # Output: the sum of the distances from all pieces to their closest goals
-    def manhattan_heuristic(self, current_state):
+    def manhattan_heuristic(self, current_state, colour):
         # current_state["position"] is frozenset, convert it back to a list
-        positions = current_state.get_current_pieces()
-        colour = current_state.get_colour()
+        positions = current_state.get_pieces(colour)
 
         heuristic = 0
         for position in positions:

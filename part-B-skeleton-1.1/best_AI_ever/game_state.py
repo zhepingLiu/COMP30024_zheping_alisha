@@ -15,17 +15,40 @@ class GameState:
     def get_colour(self):
         return self.colour
 
-    def get_current_pieces(self):
-        return self.current_pieces
+    def get_pieces(self, colour):
+        if colour == self.colour:
+            return self.current_pieces
+        else:
+            return self.enemy_pieces[colour]
 
     def get_frozenset_current_pieces(self):
         return frozenset(self.current_pieces)
 
-    def get_enemy_pieces(self):
-        return self.enemy_pieces
+    def get_enemy_pieces(self, colour):
+        # return self.enemy_pieces
+        if colour == self.colour:
+            return self.enemy_pieces
+        else:
+            all_colours = ["red", "green", "blue"]
+            enemy_pieces = {}
+            enemy_pieces[self.colour] = self.current_pieces
+            other_enemy_colour = [x for x in all_colours
+                                  if x != colour and x != self.colour]
+            enemy_pieces[other_enemy_colour] = \
+                                  self.enemy_pieces[other_enemy_colour]
+            return enemy_pieces
 
     def get_frozenset_enemy_pieces(self):
         return frozenset(self.enemy_pieces)
+
+    def get_frozenset_pieces(self, colour):
+        if colour == self.colour:
+            return (self.get_frozenset_current_pieces(), 
+                    self.get_frozenset_enemy_pieces())
+        else:
+            enemy_pieces = self.get_enemy_pieces(colour)
+            return (frozenset(self.enemy_pieces[colour]), 
+                    frozenset(enemy_pieces))
 
     def get_exit_positions(self):
         return self.exit_positions
@@ -48,14 +71,14 @@ class GameState:
 
         return occupied_positions
 
-    def is_sub_goal(self, piece):
-        if piece in self.exit_positions:
+    def is_sub_goal(self, piece, colour):
+        if piece in self.exit_positions[colour]:
             return True
         
         return False
 
-    def is_goal(self):
-        return self.number_of_exits == 4
+    def is_goal(self, colour):
+        return self.number_of_exits[colour] == 4
 
     def update(self, colour, action):
         # update the game_state according to the previous action
@@ -123,11 +146,11 @@ class GameState:
         if colour == self.colour:
             self.current_pieces.remove(
                 action[ACTION_POSITIONS][PRE_ACTION_POSITION])
-            # self.number_of_exits += 1
         else:
             self.enemy_pieces[colour].remove(
                 action[ACTION_POSITIONS][PRE_ACTION_POSITION])
 
+        self.number_of_exits[colour] += 1
         return
 
     def turn_piece(self, pre_position, after_position, colour):
@@ -161,11 +184,23 @@ class GameState:
 
     def construct_goal_actions(self):
         goal_actions = []
-
         game_state = self
+        # game_state.print_game_state()
 
         while game_state.get_previous_state() != None:
             goal_actions.append(game_state.get_action())
             game_state = game_state.get_previous_state()
+            # game_state.print_game_state()
 
         return list(reversed(goal_actions))
+
+    def print_game_state(self):
+        print("My: %s; Enemies: %s; Action: %s; Exits: %s" % 
+              (self.current_pieces, self.enemy_pieces, 
+               self.action, self.number_of_exits))
+
+    def print_all_pre_states(self):
+        current_state = self
+        while current_state.previous_state != None:
+            current_state.previous_state.print_game_state()
+            current_state = current_state.previous_state
