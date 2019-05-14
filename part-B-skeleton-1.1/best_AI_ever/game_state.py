@@ -1,11 +1,10 @@
 from best_AI_ever.game_board import GameBoard as GameBoard
 
 class GameState:
-    def __init__(self, colour, current_pieces, enemy_pieces, exit_positions,
+    def __init__(self, colour, current_pieces, exit_positions,
                  action, previous_state, number_of_exits):
         self.colour = colour
         self.current_pieces = current_pieces
-        self.enemy_pieces = enemy_pieces
         self.exit_positions = exit_positions
         self.action = action
         self.previous_state = previous_state
@@ -15,40 +14,24 @@ class GameState:
     def get_colour(self):
         return self.colour
 
-    def get_pieces(self, colour):
-        if colour == self.colour:
-            return self.current_pieces
-        else:
-            return self.enemy_pieces[colour]
+    def get_current_pieces(self):
+        return self.current_pieces
 
-    def get_frozenset_current_pieces(self):
-        return frozenset(self.current_pieces)
+    def get_pieces(self, colour):
+        return self.current_pieces[colour]
+
+    def get_frozenset_pieces(self):
+        return frozenset(self.current_pieces.items())
 
     def get_enemy_pieces(self, colour):
-        # return self.enemy_pieces
-        if colour == self.colour:
-            return self.enemy_pieces
-        else:
-            all_colours = ["red", "green", "blue"]
-            enemy_pieces = {}
-            enemy_pieces[self.colour] = self.current_pieces
-            other_enemy_colour = [x for x in all_colours
-                                  if x != colour and x != self.colour]
-            enemy_pieces[other_enemy_colour] = \
-                                  self.enemy_pieces[other_enemy_colour]
-            return enemy_pieces
+        all_colours = ["red", "blue", "green"]
+        enemy_colours = [x for x in all_colours if x != colour]
 
-    def get_frozenset_enemy_pieces(self):
-        return frozenset(self.enemy_pieces)
-
-    def get_frozenset_pieces(self, colour):
-        if colour == self.colour:
-            return (self.get_frozenset_current_pieces(), 
-                    self.get_frozenset_enemy_pieces())
-        else:
-            enemy_pieces = self.get_enemy_pieces(colour)
-            return (frozenset(self.enemy_pieces[colour]), 
-                    frozenset(enemy_pieces))
+        enemy_pieces = {}
+        for enemy_colour in enemy_colours:
+            enemy_pieces[enemy_colour] = self.current_pieces[enemy_colour]
+        
+        return enemy_pieces
 
     def get_exit_positions(self):
         return self.exit_positions
@@ -65,8 +48,8 @@ class GameState:
     def get_occupied_positions(self):
         # return all hexes that are currently occupied,
         # including pieces from all teams including ourself
-        occupied_positions = self.current_pieces
-        for _, pieces in self.enemy_pieces.items():
+        occupied_positions = []
+        for _, pieces in self.current_pieces.items():
             occupied_positions += pieces
 
         return occupied_positions
@@ -103,16 +86,11 @@ class GameState:
         PRE_ACTION_POSITION = 0
         AFTER_ACTION_POSITION = 1
 
-        if colour == self.colour:
-            self.current_pieces.remove(
-                action[ACTION_POSITIONS][PRE_ACTION_POSITION])
-            self.current_pieces.append(
-                action[ACTION_POSITIONS][AFTER_ACTION_POSITION])
-        else:
-            self.enemy_pieces[colour].remove(
-                action[ACTION_POSITIONS][PRE_ACTION_POSITION])
-            self.enemy_pieces[colour].append(
-                action[ACTION_POSITIONS][AFTER_ACTION_POSITION])
+        pre_position = action[ACTION_POSITIONS][PRE_ACTION_POSITION]
+        after_position = action[ACTION_POSITIONS][AFTER_ACTION_POSITION]
+
+        self.current_pieces[colour].remove(pre_position)
+        self.current_pieces[colour].append(after_position)
 
         return
 
@@ -126,60 +104,34 @@ class GameState:
         pre_position = action[ACTION_POSITIONS][PRE_ACTION_POSITION]
         after_position = action[ACTION_POSITIONS][AFTER_ACTION_POSITION]
 
-        if colour == self.colour:
-            self.current_pieces.remove(pre_position)
-            self.current_pieces.append(after_position)
-            # acquire the enemy piece if possible
-            # TODO: first step, we need to calculate the coordinate of the piece being acquired
-        else:
-            self.enemy_pieces[colour].remove(pre_position)
-            self.enemy_pieces[colour].append(after_position)
-            # TODO: update if any other piece is taken by the enemy
-
+        self.current_pieces[colour].remove(pre_position)
+        self.current_pieces[colour].append(after_position)
         self.turn_piece(pre_position, after_position, colour)
+
         return
 
     def update_exiting(self, colour, action):
         ACTION_POSITIONS = 1
         PRE_ACTION_POSITION = 0
 
-        if colour == self.colour:
-            self.current_pieces.remove(
-                action[ACTION_POSITIONS][PRE_ACTION_POSITION])
-        else:
-            self.enemy_pieces[colour].remove(
-                action[ACTION_POSITIONS][PRE_ACTION_POSITION])
+        pre_position = action[ACTION_POSITIONS][PRE_ACTION_POSITION]
 
+        self.current_pieces[colour].remove(pre_position)
         self.number_of_exits[colour] += 1
+
         return
 
     def turn_piece(self, pre_position, after_position, colour):
-        taken_piece = self.game_board.get_jump_medium(pre_position, after_position)
-        # if the colour of the taken piece and the colour of the piece at after_position
-        # are not the same, change the colour of the taken piece to the colour of the piece at after_position
-        if colour == self.colour:
-            for taken_colour, enemy_pieces in self.enemy_pieces.items():
-                for piece in enemy_pieces:
-                    if piece == taken_piece:
-                        self.enemy_pieces[taken_colour].remove(taken_piece)
-                        self.current_pieces.append(taken_piece)
-                        return
-        else:
-            # check pieces of ours and pieces of another enemy
-            for piece in self.current_pieces:
-                if piece == taken_piece:
-                    self.current_pieces.remove(taken_piece)
-                    self.enemy_pieces[colour].append(taken_piece)
-                    return
+        taken_piece = self.game_board.get_jump_medium(
+                                        pre_position, after_position)
 
-            for taken_colour, enemy_pieces in self.enemy_pieces.items():
-                if taken_colour == colour:
-                    continue
-                for piece in enemy_pieces:
-                    if piece == taken_piece:
-                        self.enemy_pieces[taken_colour].remove(taken_piece)
-                        self.enemy_pieces[colour].append(taken_piece)
-                        return
+        for taken_colour, pieces in self.current_pieces.items():
+            # if the colour of the taken piece is different from the colour
+            # of the piece took it
+            if taken_colour != colour and taken_piece in pieces:
+                self.current_pieces[taken_colour].remove(taken_piece)
+                self.current_pieces[colour].append(taken_piece)
+
         return
 
     def construct_goal_actions(self):
@@ -196,7 +148,8 @@ class GameState:
 
     def print_game_state(self):
         print("My: %s; Enemies: %s; Action: %s; Exits: %s" % 
-              (self.current_pieces, self.enemy_pieces, 
+              (self.current_pieces[self.colour], 
+               self.get_enemy_pieces(self.colour), 
                self.action, self.number_of_exits))
 
     def print_all_pre_states(self):
