@@ -19,8 +19,66 @@ class Player:
                                     number_of_exits)
 
     def action(self):
-        # TODO: this will be the main function that make the player performs like AI
-        return ("PASS", None)
+        # TODO: this will be the main function that make the player performs
+        # like an AI
+        INFINITE = 99999
+        SENTINEL = -1
+
+        # TODO: basic idea: remove all actions that does not look good (gives us
+        # negative rewards), then choose the action gives the smallest h value
+        # among all available actions
+        # Player order: Red -> Green -> Blue
+
+        available_successors = self.generate_successor(
+                                            self.game_state, self.colour)
+        available_actions = [x.get_action() for x in available_successors]
+
+        jump_capturing_pieces = set()
+        distances = self.game_board.distance_to_enemy_pieces(self.game_state)
+        # distances: a dict of dict, first key is our pieces, second key is
+        # enemy pieces, the value is the distance between them
+        for my_piece, enemy_distances in distances.items():
+            for enemy_piece, enemy_distance in enemy_distances.items():
+                if enemy_distance == 1:
+                    jump_capturing_pieces.add(my_piece)
+
+        # Stop moving the piece when there is enemy piece in two hexes from it,
+        # if enemy piece is one hex away (next to us), jump over it or move
+        # apart from it (move to the direction that increase the distance);
+        # detailed strategy based on the heuristic (the distance to the goal),
+        # if jump can take us forward to the goal, then jump; otherwise move apart
+        # from it
+        for successor, successor_action in zip(available_successors, available_actions):
+            if successor_action[0] == 'EXIT':
+                continue
+
+            after_position = successor_action[1][1]
+            # we use the enemy pieces get from successor state, if some pieces
+            # are captured by us, it will not be an enemy piece in that state
+            for enemy in successor.get_enemy_pieces(self.colour, True):
+                # if the distance after applying the successor action is below
+                # 2, i.e. distance = 1 since 0 is impossible, remove this action
+                if (self.game_board.hex_distance(after_position, enemy) < 2 and
+                    not self.game_board.no_jump_for_enemy(
+                    self.game_state, after_position, enemy)):
+                    available_actions[:] = [x for x in available_actions if x != successor_action]
+                    available_successors[:] = [x for x in available_successors if x != successor]
+
+        # TODO: handle jump_capturing_pieces
+        # TODO: compute the h value of all actions, and choose the successor 
+        # with the smallest h value
+        h_min = INFINITE
+        h_min_index = SENTINEL
+        for i in range(len(available_successors)):
+            h_successor = self.manhattan_heuristic(available_successors[i], 
+                                                    self.colour)
+            if h_successor < h_min:
+                h_min = h_successor
+                h_min_index = i
+            # TODO: we can give jump_capture action higher priority than other
+            # actions
+
+        return available_actions[h_min_index]
 
     def update(self, colour, action):
         self.game_state.update(colour, action)
@@ -41,7 +99,7 @@ class Player:
 
         # use the tuple of our teams pieces and the other teams' pieces as
         # the key to each different state 
-        game_state_pieces = game_state.get_frozenset_pieces()
+        game_state_pieces = game_state.get_my_pieces()
         g_score[game_state_pieces] = 0
         f_score[game_state_pieces] = 0 + heuristic(game_state, colour)
 
@@ -49,9 +107,10 @@ class Player:
 
         while not open_list.is_empty():
             current_state = open_list.pop()
+            # TODO: testing purpose
             # skip if the same combination of all pieces has already been 
             # visited before
-            current_pieces = current_state.get_frozenset_pieces()
+            current_pieces = current_state.get_my_pieces()
             closed_list.append(current_pieces)
 
             # if the current state is the goal, return the actions to this state
@@ -60,7 +119,7 @@ class Player:
 
             for successor_state in self.generate_successor(current_state, 
                                                            colour):
-                successor_pieces = successor_state.get_frozenset_pieces()
+                successor_pieces = successor_state.get_my_pieces()
                 if successor_pieces in closed_list:
                     continue
 
@@ -84,9 +143,9 @@ class Player:
         jump_successors = self.generate_jump_successor(game_state, colour)
         move_successors = self.generate_move_successor(game_state, colour)
 
-        successor = exit_successors + jump_successors + move_successors
+        successors = exit_successors + jump_successors + move_successors
 
-        return successor
+        return list(set(successors))
 
     def generate_exit_successor(self, game_state, colour):
         exit_successors = []
@@ -169,7 +228,6 @@ class Player:
         exit_positions = pre_game_state.get_exit_positions()
         number_of_exits = pre_game_state.get_number_of_exits().copy()
 
-        # TODO: Temporary handle
         if action[0] == "EXIT":
             number_of_exits[colour] += 1
 
@@ -189,12 +247,15 @@ class Player:
         # TODO: if red, start pieces = [...], etc.
         start_positions = {}
 
-        start_positions["red"] = frozenset([(-3, 0), (-3, 1), (-3, 2), (-3, 3)])
-        # start_positions["blue"] = frozenset([(3, 0), (2, 1), (1, 2), (0, 3)])
-        # start_positions["green"] = frozenset([(0, -3), (1, -3), (2, -3), (-3, -3)])
+        start_positions["red"] = frozenset([(-3, 0), (-3, 1), 
+                                            (-3, 2), (-3, 3)])
+        start_positions["blue"] = frozenset([(3, 0), (2, 1), 
+                                             (1, 2), (0, 3)])
+        start_positions["green"] = frozenset([(0, -3), (1, -3), 
+                                              (2, -3), (3, -3)])
         # TODO: Testing purpose
-        start_positions["blue"] = frozenset([])
-        start_positions["green"] = frozenset([])
+        # start_positions["blue"] = frozenset([])
+        # start_positions["green"] = frozenset([])
 
         return start_positions
 
@@ -207,33 +268,6 @@ class Player:
 
         return exit_positions
 
-    # compute the manhattan distance from a piece to its closest goal on
-    # the hex game board
-    # Input: position: the coordinate of a piece
-    #        colour: the colour of the input piece
-    # Output: the shortest distance between the piece and the goal
-    def manhattan_distance(self, position, colour):
-        if colour == "red":
-            goal = [[3, -3], [3, -2], [3, -1], [3, 0]]
-        elif colour == "green":
-            goal = [[-3, 3], [-2, 3], [-1, 3], [0, 3]]
-        elif colour == "blue":
-            goal = [[0, -3], [-1, -2], [-2, -1], [-3, 0]]
-
-        dist0 = (abs(position[0] - goal[0][0]) + abs(position[0] + position[1]
-                - goal[0][0] - goal[0][1]) + abs(position[1] - goal[0][1])) / 2
-
-        # take the minimum distance (to make sure the heuristic is admissible) 
-        # from distances to all goals
-        for i in range(1, 4):
-            temp_dist = (abs(position[0] - goal[i][0]) + abs(position[0]
-                        + position[1] - goal[i][0] - goal[i][1]) +
-                        abs(position[1] - goal[i][1])) / 2
-            if temp_dist < dist0:
-                dist0 = temp_dist
-
-        return int(dist0)
-
     # compute the sum of the distances from all pieces to their closest goals
     # Input: current_state: the current state of the game
     # Output: the sum of the distances from all pieces to their closest goals
@@ -244,6 +278,7 @@ class Player:
         heuristic = 0
         for position in positions:
             # assuming all moves are jump (move distance = 2), + 1 exit action
-            heuristic += (self.manhattan_distance(position, colour) / 2 + 1)
+            heuristic += (self.game_board.manhattan_distance(
+                                                    position, colour) / 2 + 1)
 
         return heuristic

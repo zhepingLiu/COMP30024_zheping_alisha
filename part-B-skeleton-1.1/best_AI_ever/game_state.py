@@ -23,15 +23,35 @@ class GameState:
     def get_frozenset_pieces(self):
         return frozenset(self.current_pieces.items())
 
-    def get_enemy_pieces(self, colour):
+    def get_my_pieces(self):
+        return self.current_pieces[self.colour]
+
+    def get_enemy_pieces(self, colour, list=False):
         all_colours = ["red", "blue", "green"]
         enemy_colours = [x for x in all_colours if x != colour]
 
-        enemy_pieces = {}
-        for enemy_colour in enemy_colours:
-            enemy_pieces[enemy_colour] = self.current_pieces[enemy_colour]
-        
+        if not list:
+            # return enemy pieces as dict, keys are the enemy colours
+            enemy_pieces = {}
+            for enemy_colour in enemy_colours:
+                enemy_pieces[enemy_colour] = self.current_pieces[enemy_colour]            
+        else:
+            # return all enemy pieces as one list
+            enemy_pieces = []
+            for enemy_colour in enemy_colours:
+                enemy_pieces += self.current_pieces[enemy_colour]
+
         return enemy_pieces
+
+    def get_pre_player_pieces(self, colour):
+        if self.colour == "red":
+            pre_player = "blue"
+        elif self.colour == "green":
+            pre_player = "red"
+        else:
+            pre_player = "green"
+
+        return self.get_pieces(pre_player)
 
     def get_exit_positions(self):
         return self.exit_positions
@@ -89,14 +109,15 @@ class GameState:
         pre_position = action[ACTION_POSITIONS][PRE_ACTION_POSITION]
         after_position = action[ACTION_POSITIONS][AFTER_ACTION_POSITION]
 
-        self.current_pieces[colour].remove(pre_position)
-        self.current_pieces[colour].append(after_position)
+        new_pieces = list(self.current_pieces[colour])
+        new_pieces.remove(pre_position)
+        new_pieces.append(after_position)
+
+        self.current_pieces[colour] = frozenset(new_pieces)
 
         return
 
     def update_jumping(self, colour, action):
-        # TODO: by applying action JUMP, the jump medium will turn to
-        # the colour of who ever did the JUMP action
         ACTION_POSITIONS = 1
         PRE_ACTION_POSITION = 0
         AFTER_ACTION_POSITION = 1
@@ -104,33 +125,43 @@ class GameState:
         pre_position = action[ACTION_POSITIONS][PRE_ACTION_POSITION]
         after_position = action[ACTION_POSITIONS][AFTER_ACTION_POSITION]
 
-        self.current_pieces[colour].remove(pre_position)
-        self.current_pieces[colour].append(after_position)
+        new_pieces = list(self.current_pieces[colour])
+        new_pieces.remove(pre_position)
+        new_pieces.append(after_position)
+        self.current_pieces[colour] = frozenset(new_pieces)
         self.turn_piece(pre_position, after_position, colour)
 
         return
 
     def update_exiting(self, colour, action):
         ACTION_POSITIONS = 1
-        PRE_ACTION_POSITION = 0
 
-        pre_position = action[ACTION_POSITIONS][PRE_ACTION_POSITION]
+        pre_position = action[ACTION_POSITIONS]
 
-        self.current_pieces[colour].remove(pre_position)
+        new_pieces = list(self.current_pieces[colour])
+        new_pieces.remove(pre_position)
+        self.current_pieces[colour] = frozenset(new_pieces)
+
         self.number_of_exits[colour] += 1
 
         return
 
     def turn_piece(self, pre_position, after_position, colour):
-        taken_piece = self.game_board.get_jump_medium(
+        taken_piece = self.game_board.get_jump_median(
                                         pre_position, after_position)
 
         for taken_colour, pieces in self.current_pieces.items():
             # if the colour of the taken piece is different from the colour
             # of the piece took it
             if taken_colour != colour and taken_piece in pieces:
-                self.current_pieces[taken_colour].remove(taken_piece)
-                self.current_pieces[colour].append(taken_piece)
+                taken_colour_pieces = list(self.current_pieces[taken_colour])
+                taken_colour_pieces.remove(taken_piece)
+                self.current_pieces[taken_colour] = frozenset(
+                                                    taken_colour_pieces)
+
+                new_pieces = list(self.current_pieces[colour])
+                new_pieces.append(taken_piece)
+                self.current_pieces[colour] = frozenset(new_pieces)
 
         return
 
