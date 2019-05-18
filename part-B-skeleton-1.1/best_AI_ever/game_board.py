@@ -158,7 +158,8 @@ class GameBoard:
 
         return dist
     
-    def get_piece_colour(self, position):
+        
+    def get_pieces_colour(self, position):
         for colour in ["red", "green", "blue"]:
             for p in self.game_state.current_pieces[colour]:
                 if position == p:
