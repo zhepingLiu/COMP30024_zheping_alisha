@@ -1,0 +1,7 @@
+1. pass when all the moves the player can take are next to an enemy's piece
+2. check if the player's piece is next to an enemy's piece afterwards, if so don't take the move
+3. try to make all pieces move forward, instead of keeping moving the one that's closest to the exit
+   use pieces on the board to jump
+4. if our pieces reduced to <= 3, put jump in priority (to gain pieces back) (still check for 2)
+5. if all distances are equal at the beginning, move the ones on the two sides (to invade enemy's area and put enemy in a passive state)
+6. if next to an enemy's piece but can't jump, take a step further from enemy's piece
