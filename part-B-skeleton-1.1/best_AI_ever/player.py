@@ -21,9 +21,18 @@ class Player:
     def action(self):
         # TODO: this will be the main function that make the player performs
         # like an AI
+        my_desirable_successors = self.get_desirable_successors(self.colour)
+        # for successor in my_desirable_successors:
+        
+        return self.choose_action(self.colour)
+
+    def update(self, colour, action):
+        self.game_state.update(colour, action)
+        return
+
+    def choose_action(self, colour):
         INFINITE = 99999
         SENTINEL = -1
-
         # TODO: basic idea: remove all actions that does not look good (gives us
         # negative rewards), then choose the action gives the smallest h value
         # among all available actions
@@ -31,10 +40,12 @@ class Player:
 
         available_successors = self.generate_successor(
                                             self.game_state, self.colour)
-        available_actions = [x.get_action() for x in available_successors]
 
-        # print("Number of actions before process: %d" % (len(available_actions)))
-        # print(available_actions)
+        # return Pass when no actions available
+        if available_successors == []:
+            return ("PASS", None)
+
+        desirable_successors = self.get_desirable_successors(self.colour)
 
         jump_capturing_pieces = set()
         distances = self.game_board.distance_to_enemy_pieces(self.game_state)
@@ -46,46 +57,9 @@ class Player:
                 # capture enemies' pieces
                 if enemy_distance == 1:
                     jump_capturing_pieces.add(my_piece)
-
-        # Stop moving the piece when there is enemy piece in two hexes from it,
-        # if enemy piece is one hex away (next to us), jump over it or move
-        # apart from it (move to the direction that increase the distance);
-        # detailed strategy based on the heuristic (the distance to the goal),
-        # if jump can take us forward to the goal, then jump; otherwise move 
-        # apart from it
-        desirable_actions = available_actions
-        desirable_successors = available_successors
-        for successor, successor_action in zip(available_successors, 
-                                               available_actions):
-            if successor_action[0] == 'EXIT':
-                continue
-
-            after_position = successor_action[1][1]
-            # we use the enemy pieces get from successor state, if some pieces
-            # are captured by us, it will not be an enemy piece in that state
-            for enemy in successor.get_enemy_pieces(self.colour, True):
-                # print("My action (%s, %s)" % (successor_action))
-                # print("Current Enemy: (%s, %s)" % (enemy))
-                # print("After hex distance: %d" % (self.game_board.hex_distance(after_position, enemy)))
-                # if the distance after applying the successor action is below
-                # 2, i.e. distance = 1 since 0 is impossible, remove this action
-                if (self.game_board.hex_distance(after_position, enemy) < 2 and
-                    not self.game_board.no_jump_for_enemy(
-                    successor, after_position, enemy)):
-                    # print("Should be removed: (%s, %s)" % (successor_action))
-                    desirable_actions = [x for x in desirable_actions 
-                                         if x != successor_action]
-                    desirable_successors = [x for x in desirable_successors 
-                                            if x != successor]
-
-        # TODO: handle jump_capturing_pieces
-
-        # return Pass when no actions available
-        if available_actions == []:
-            return ("PASS", None)
         
         # when all actions are not desirable, but we have to return one of them
-        if desirable_actions == []:
+        if desirable_successors == []:
             h_min = INFINITE
             h_min_index = SENTINEL
             for i in range(len(available_successors)):
@@ -95,27 +69,63 @@ class Player:
                     h_min = h_successor
                     h_min_index = i
             
-            return available_actions[h_min_index]
+            return available_successors[h_min_index].get_action()
 
-        # print("Number of actions after process: %d" % (len(desirable_actions)))
-        # compute the h value of all actions, and choose the successor 
-        # with the smallest h value
-        h_min = INFINITE
-        h_min_index = SENTINEL
+        final_desirable_successors = []
         for i in range(len(desirable_successors)):
-            h_successor = self.manhattan_heuristic(desirable_successors[i], 
-                                                    self.colour)
-            if h_successor < h_min:
-                h_min = h_successor
-                h_min_index = i
-            # TODO: we can give jump_capture action higher priority than other
-            # actions
+            if desirable_successors[i].get_action() == "JUMP" and \
+                len(desirable_successors[i].get_my_pieces()) > \
+                len(self.game_state.get_my_pieces()):
+                final_desirable_successors.append(desirable_successors[i])
 
-        return desirable_actions[h_min_index]
+        if final_desirable_successors == []:
+            final_desirable_successors = desirable_successors
 
-    def update(self, colour, action):
-        self.game_state.update(colour, action)
-        return
+        # choose the action that brings the smallest h value in its successor
+        r_max = 0
+        r_max_index = SENTINEL
+        for i in range(len(final_desirable_successors)):
+            r_successor = self.state_reward(final_desirable_successors[i])
+            if r_successor[colour] > r_max:
+                r_max = r_successor[colour]
+                r_max_index = i
+
+        return final_desirable_successors[r_max_index].get_action()
+    
+    def get_desirable_successors(self, colour):
+        available_successors = self.generate_successor(
+                                    self.game_state, colour)
+        available_actions = [x.get_action() for x in available_successors]
+
+        # Stop moving the piece when there is enemy piece in two hexes from it,
+        # if enemy piece is one hex away (next to us), jump over it or move
+        # apart from it (move to the direction that increase the distance);
+        # detailed strategy based on the heuristic (the distance to the goal),
+        # if jump can take us forward to the goal, then jump; otherwise move
+        # apart from it
+        desirable_actions = available_actions
+        desirable_successors = available_successors
+        for successor, successor_action in zip(available_successors,
+                                               available_actions):
+            if successor_action[0] == 'EXIT':
+                continue
+
+            after_position = successor_action[1][1]
+            # we use the enemy pieces get from successor state, if some pieces
+            # are captured by us, it will not be an enemy piece in that state
+            for enemy in successor.get_enemy_pieces(self.colour, True):
+                # if the distance after applying the successor action is below
+                # 2, i.e. distance = 1 since 0 is impossible, remove this action
+                if (self.game_board.hex_distance(after_position, enemy) < 2 and
+                    not self.game_board.no_jump_for_enemy(
+                        successor, after_position, enemy)):
+                    # print("Should be removed: (%s, %s)" % (successor_action))
+                    desirable_actions = [x for x in desirable_actions
+                                         if x != successor_action]
+                    desirable_successors = [x for x in desirable_successors
+                                            if x != successor]
+
+        return desirable_successors
 
     def a_star_search(self, game_state, colour):
         COST = 1
@@ -315,3 +325,22 @@ class Player:
                                                     position, colour) / 2 + 1)
 
         return heuristic
+
+    def state_reward(self, game_state):
+        # TODO: number of pieces in our team: 10
+        # TODO: number of exits: 10
+        # TODO: total distances to the goal (h-value): - distances
+        state_rewards = {}
+        current_pieces = game_state.get_current_pieces()
+        number_of_exits = game_state.get_number_of_exits()
+
+        for colour, pieces in current_pieces.items():
+            state_rewards[colour] = len(pieces) * 10
+            state_rewards[colour] -= self.manhattan_heuristic(
+                                                        game_state, colour)
+
+        for colour, exits in number_of_exits.items():
+            state_rewards[colour] += exits * 10
+
+        return state_rewards
+        
