@@ -325,6 +325,7 @@ class Player:
                                                     position, colour) / 2 + 1)
 
         return heuristic
+<<<<<<< HEAD
 
     def state_reward(self, game_state):
         # TODO: number of pieces in our team: 10
@@ -344,3 +345,17 @@ class Player:
 
         return state_rewards
         
+=======
+    
+    #check if our piece is next to a enemy's piece, who's got the next turn
+    def in_danger(self, colour):
+        game_board = self.game_board.get_game_board()
+        my_pieces = game_state.get_my_pieces(self)
+        next_player_pieces = game_state.get_next_player_pieces(self, colour)
+
+        for position in game_board:
+            for piece in my_pieces:
+                if position in next_player_pieces and \
+                    game_board.jump(position, piece): 
+                    return True
+>>>>>>> 7f6be7400d30af5633435acad396f50b2f57d869
