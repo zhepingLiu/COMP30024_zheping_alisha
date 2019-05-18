@@ -5,3 +5,6 @@
 4. if our pieces reduced to <= 3, check if the exited and remained >= four. If not, put jump in priority (to gain pieces back) (still check for 2)
 5. if all distances are equal at the beginning, move the ones on the two sides (to invade enemy's area and put enemy in a passive state)
 6. if next to an enemy's piece but can't jump, take a step further from enemy's piece
+7. two exit positions at the corner have higher priorities than the two exit positions in the middle since no piece can jump over them.
+8. the pieces should protect each other, we can apply the same logic to enemies, and check if their successors we lost any piece
+9. use minimax technique to look two steps forward beyond the successor? (giving each of the opponent a chance to predict their action)
