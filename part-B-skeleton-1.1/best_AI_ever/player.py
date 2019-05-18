@@ -318,8 +318,6 @@ class Player:
     
     #check if our piece is next to a enemy's piece, who's got the next turn
     def in_danger(self, colour):
-        current_pieces = game_state.get_current_pieces()
-        occupied_positions = game_state.get_occupied_positions()
         game_board = self.game_board.get_game_board()
         my_pieces = game_state.get_my_pieces(self)
         next_player_pieces = game_state.get_next_player_pieces(self, colour)
@@ -327,5 +325,5 @@ class Player:
         for position in game_board:
             for piece in my_pieces:
                 if position in next_player_pieces and \
-                    self.game_board.next_to(piece, position): 
+                    game_board.jump(position, piece): 
                     return True
