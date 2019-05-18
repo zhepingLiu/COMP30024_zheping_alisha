@@ -89,7 +89,7 @@ class Player:
             h_min = INFINITE
             h_min_index = SENTINEL
             for i in range(len(available_successors)):
-                h_successor = self.manhattan_heuristic(desirable_successors[i],
+                h_successor = self.manhattan_heuristic(available_successors[i],
                                                         self.colour)
                 if h_successor < h_min:
                     h_min = h_successor
