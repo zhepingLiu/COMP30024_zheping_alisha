@@ -52,7 +52,16 @@ class GameState:
             pre_player = "green"
 
         return self.get_pieces(pre_player)
-
+    
+    def get_next_player_pieces(self, colour):
+        if self.colour == "blue":
+            next_player == "red"
+        elif self.colour == "red":
+            next_player == "green"
+        else:
+            next_player == "blue"
+        return self.get_pieces(pre_player)
+    
     def get_exit_positions(self):
         return self.exit_positions
 
