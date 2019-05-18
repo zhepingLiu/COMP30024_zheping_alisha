@@ -21,16 +21,64 @@ class Player:
     def action(self):
         # TODO: this will be the main function that make the player performs
         # like an AI
+        LIMIT = 6
         my_desirable_successors = self.get_desirable_successors(self.colour)
+
+        if my_desirable_successors == []:
+            available_successors = self.generate_successor(self.game_state, 
+                                                           self.colour)
+            if available_successors == []:
+                return ("PASS", None)
+            my_desirable_successors = available_successors
+
+        next_player = self.game_state.get_next_player_colour(self.colour)
+        current_successors = my_desirable_successors[:]
+        i = 0
+        while i < LIMIT:
+            next_player_successors = []
+            for successor in current_successors:
+                next_player_successors.append(self.choose_optimal_successor(
+                                                successor, next_player))
+                next_player = self.game_state.get_next_player_colour(
+                                                next_player)
+                current_successors = next_player_successors
+            i += 1
+
+        # next_player = self.game_state.get_next_player_colour(self.colour)
+        # enemy_1_successors = []
         # for successor in my_desirable_successors:
+        #     enemy_1_successors.append(self.choose_optimal_successor(
+        #                                     successor, next_player))
         
-        return self.choose_action(self.colour)
+        # next_player = self.game_state.get_next_player_colour(next_player)
+        # enemy_2_successors = []
+        # for successor in enemy_1_successors:
+        #     enemy_2_successors.append(self.choose_optimal_successor(
+        #                                     successor, next_player))
+
+        max_reward = 0
+        max_reward_index = -1
+        for i in range(len(next_player_successors)):
+            successor = next_player_successors[i]
+            rewards = self.get_state_reward(successor)
+            if rewards[self.colour] > max_reward:
+                max_reward = rewards[self.colour]
+                max_reward_index = i
+
+        try:
+            action = my_desirable_successors[max_reward_index].get_action()
+        except:
+            print(len(my_desirable_successors))
+            print(len(next_player_successors))
+            print(max_reward_index)
+
+        return action
 
     def update(self, colour, action):
         self.game_state.update(colour, action)
         return
 
-    def choose_action(self, colour):
+    def choose_optimal_successor(self, game_state, colour):
         INFINITE = 99999
         SENTINEL = -1
         # TODO: basic idea: remove all actions that does not look good (gives us
@@ -38,17 +86,17 @@ class Player:
         # among all available actions
         # Player order: Red -> Green -> Blue
 
-        available_successors = self.generate_successor(
-                                            self.game_state, self.colour)
+        available_successors = self.generate_successor(game_state, self.colour)
 
         # return Pass when no actions available
         if available_successors == []:
-            return ("PASS", None)
+            return self.generate_new_game_state(game_state, 
+                        game_state.get_current_pieces(), ("PASS", None))
 
         desirable_successors = self.get_desirable_successors(self.colour)
 
         jump_capturing_pieces = set()
-        distances = self.game_board.distance_to_enemy_pieces(self.game_state)
+        distances = self.game_board.distance_to_enemy_pieces(game_state)
         # distances: a dict of dict, first key is our pieces, second key is
         # enemy pieces, the value is the distance between them
         for my_piece, enemy_distances in distances.items():
@@ -64,18 +112,18 @@ class Player:
             h_min_index = SENTINEL
             for i in range(len(available_successors)):
                 h_successor = self.manhattan_heuristic(available_successors[i],
-                                                        self.colour)
+                                                        colour)
                 if h_successor < h_min:
                     h_min = h_successor
                     h_min_index = i
             
-            return available_successors[h_min_index].get_action()
+            return available_successors[h_min_index]
 
         final_desirable_successors = []
         for i in range(len(desirable_successors)):
             if desirable_successors[i].get_action() == "JUMP" and \
                 len(desirable_successors[i].get_my_pieces()) > \
-                len(self.game_state.get_my_pieces()):
+                len(game_state.get_my_pieces()):
                 final_desirable_successors.append(desirable_successors[i])
 
         if final_desirable_successors == []:
@@ -85,12 +133,12 @@ class Player:
         r_max = 0
         r_max_index = SENTINEL
         for i in range(len(final_desirable_successors)):
-            r_successor = self.state_reward(final_desirable_successors[i])
+            r_successor = self.get_state_reward(final_desirable_successors[i])
             if r_successor[colour] > r_max:
                 r_max = r_successor[colour]
                 r_max_index = i
 
-        return final_desirable_successors[r_max_index].get_action()
+        return final_desirable_successors[r_max_index]
     
     def get_desirable_successors(self, colour):
         available_successors = self.generate_successor(
@@ -198,12 +246,12 @@ class Player:
             if game_state.is_sub_goal(piece, colour):
                 new_pieces = copy.deepcopy(current_pieces)
                 new_pieces[colour] = frozenset([x for x in 
-                                     current_pieces[colour] if x != piece])
+                                    current_pieces[colour] if x != piece])
                 action = self.get_action("EXIT", piece, None)
                 new_game_state = self.generate_new_game_state(game_state, 
                                                             new_pieces, action)
                 exit_successors.append(new_game_state)
-        
+
         return exit_successors
 
     def generate_jump_successor(self, game_state, colour):
@@ -325,9 +373,8 @@ class Player:
                                                     position, colour) / 2 + 1)
 
         return heuristic
-<<<<<<< HEAD
 
-    def state_reward(self, game_state):
+    def get_state_reward(self, game_state):
         # TODO: number of pieces in our team: 10
         # TODO: number of exits: 10
         # TODO: total distances to the goal (h-value): - distances
@@ -336,26 +383,45 @@ class Player:
         number_of_exits = game_state.get_number_of_exits()
 
         for colour, pieces in current_pieces.items():
-            state_rewards[colour] = len(pieces) * 10
+            state_rewards[colour] = len(pieces) * \
+                        self.reward_of_number_of_pieces(game_state, colour)
             state_rewards[colour] -= self.manhattan_heuristic(
                                                         game_state, colour)
 
         for colour, exits in number_of_exits.items():
-            state_rewards[colour] += exits * 10
+            state_rewards[colour] += exits * self.reward_of_exits(
+                                                        game_state, colour)
 
         return state_rewards
-        
-=======
+
+    def reward_of_number_of_pieces(self, game_state, colour):
+        number_of_my_pieces = len(game_state.get_pieces(colour))
+        number_of_enemy_pieces = len(game_state.get_enemy_pieces(colour, True))
+
+        if number_of_my_pieces == 0 or number_of_enemy_pieces == 0:
+            return 0
+
+        return (5 / (number_of_my_pieces / number_of_enemy_pieces))
+
+    def reward_of_exits(self, game_state, colour):
+        number_of_my_pieces = len(game_state.get_pieces(colour))
+        number_of_exits = game_state.get_number_of_exits()[colour]
+
+        if number_of_exits + number_of_my_pieces >= 4:
+            return 15
+        else:
+            return -5
     
     #check if our piece is next to a enemy's piece, who's got the next turn
     def in_danger(self, colour):
         game_board = self.game_board.get_game_board()
-        my_pieces = game_state.get_my_pieces(self)
-        next_player_pieces = game_state.get_next_player_pieces(self, colour)
+        my_pieces = self.game_state.get_my_pieces()
+        next_player_pieces = self.game_state.get_next_player_pieces(colour)
 
         for position in game_board:
             for piece in my_pieces:
                 if position in next_player_pieces and \
                     game_board.jump(position, piece): 
                     return True
->>>>>>> 7f6be7400d30af5633435acad396f50b2f57d869
+
+        return False

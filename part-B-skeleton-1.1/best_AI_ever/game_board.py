@@ -117,7 +117,7 @@ class GameBoard:
         # IF the piece belongs to the previous player, that player have opportunity
         # to eat my piece if the after_player moves their piece away
         if jump_result[0] == True and \
-            jump_result[1] in game_state.get_my_pieces():
+            (jump_result[1] in game_state.get_my_pieces()):
             return True
         # when JUMP destination is out of the game board
         elif jump_result[0] == False:
