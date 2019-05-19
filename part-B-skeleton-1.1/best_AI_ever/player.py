@@ -22,19 +22,25 @@ class Player:
     def action(self):
         # TODO: this will be the main function that make the player performs
         # like an AI
-        LIMIT = 3
+        LIMIT = 6
         DISCOUNT = 0.8
-        my_desirable_successors = self.get_desirable_successors(self.colour)
+        my_urgent_successors, my_desirable_successors = \
+                                    self.get_desirable_successors(self.colour)
 
-        if my_desirable_successors == []:
+        if my_urgent_successors == [] and my_desirable_successors == []:
             available_successors = self.generate_successor(self.game_state, 
                                                            self.colour)
             if available_successors == []:
                 return ("PASS", None)
             my_desirable_successors = available_successors
 
+        if my_urgent_successors != []:
+            final_desirable_successors = my_urgent_successors
+        else:
+            final_desirable_successors = my_desirable_successors
+        
         next_player = self.game_state.get_next_player_colour(self.colour)
-        current_successors = my_desirable_successors[:]
+        current_successors = final_desirable_successors[:]
         state_rewards = [self.get_state_reward(x) for x in current_successors]
 
         i = 0
@@ -52,19 +58,21 @@ class Player:
             current_successors = next_player_successors
             i += 1
         
-        all_rewards = []
         max_reward = 0
         max_reward_index = -1
         for i in range(len(current_successors)):
             if state_rewards[i][self.colour] > max_reward:
                 max_reward = state_rewards[i][self.colour]
                 max_reward_index = i
+            elif state_rewards[i][self.colour] == max_reward and \
+                current_successors[i].get_action()[0] == "JUMP":
+                max_reward_index = i
 
-        my_desirable_actions = [x.get_action() for x in my_desirable_successors]
+        # my_desirable_actions = [x.get_action() for x in my_desirable_successors]
         # print(my_desirable_actions)
-        # print(all_rewards)
-        # print("---------------------------------------------------------------")
-        action = my_desirable_successors[max_reward_index].get_action()
+        # print(state_rewards)
+        # print("-------------------------------------------------------------")
+        action = final_desirable_successors[max_reward_index].get_action()
 
         return action
 
@@ -73,7 +81,7 @@ class Player:
         return
 
     def choose_optimal_successor(self, game_state, colour):
-        INFINITE = 99999
+        ZERO = 0
         SENTINEL = -1
         # TODO: basic idea: remove all actions that does not look good (gives us
         # negative rewards), then choose the action gives the smallest h value
@@ -87,32 +95,35 @@ class Player:
             return self.generate_new_game_state(game_state, 
                         game_state.get_current_pieces(), ("PASS", None))
 
-        desirable_successors = self.get_desirable_successors(self.colour)
+        urgent_successors, desirable_successors = \
+                                self.get_desirable_successors(self.colour)
         
         # when all actions are not desirable, but we have to return one of them
-        if desirable_successors == []:
-            r_min = INFINITE
-            r_min_index = SENTINEL
+        if urgent_successors == [] and desirable_successors == []:
+            r_max = ZERO
+            r_max_index = SENTINEL
             for i in range(len(available_successors)):
                 r_successor = self.get_state_reward(available_successors[i])
-                if r_successor[colour] < r_min:
-                    r_min = r_successor[colour]
-                    r_min_index = i
+                if r_successor[colour] > r_max:
+                    r_max = r_successor[colour]
+                    r_max_index = i
             
-            return available_successors[r_min_index]
+            return available_successors[r_max_index]
 
-        final_desirable_successors = []
-        for i in range(len(desirable_successors)):
-            if desirable_successors[i].get_action() == "JUMP" and \
-                len(desirable_successors[i].get_my_pieces()) > \
-                len(game_state.get_my_pieces()):
-                final_desirable_successors.append(desirable_successors[i])
+        # final_desirable_successors = []
+        # for i in range(len(desirable_successors)):
+        #     if desirable_successors[i].get_action() == "JUMP" and \
+        #         len(desirable_successors[i].get_my_pieces()) > \
+        #         len(game_state.get_my_pieces()):
+        #         final_desirable_successors.append(desirable_successors[i])
 
-        if final_desirable_successors == []:
+        if urgent_successors != []:
+            final_desirable_successors = urgent_successors
+        else:
             final_desirable_successors = desirable_successors
 
         # choose the action that brings the smallest h value in its successor
-        r_max = 0
+        r_max = ZERO
         r_max_index = SENTINEL
         for i in range(len(final_desirable_successors)):
             r_successor = self.get_state_reward(final_desirable_successors[i])
@@ -134,28 +145,47 @@ class Player:
         # if jump can take us forward to the goal, then jump; otherwise move
         # apart from it
         desirable_actions = available_actions
+        urgent_successors = []
         desirable_successors = available_successors
+        protecting_pieces = self.game_state.is_protecting_pieces()
+        protection_positions = self.game_state.get_protection_positions()
+        risky_pieces = self.game_state.get_risky_pieces()
         for successor, successor_action in zip(available_successors,
                                                available_actions):
             if successor_action[0] == 'EXIT':
                 continue
 
+            pre_position = successor_action[1][0]
             after_position = successor_action[1][1]
+
+            if after_position in protection_positions or \
+                pre_position in risky_pieces:
+                urgent_successors.append(successor)
+
+            if pre_position in protecting_pieces:
+                desirable_actions = [x for x in desirable_actions
+                                     if x != successor_action]
+                desirable_successors = [x for x in desirable_successors
+                                        if x != successor]
+                continue
+
             # we use the enemy pieces get from successor state, if some pieces
             # are captured by us, it will not be an enemy piece in that state
             for enemy in successor.get_enemy_pieces(self.colour, True):
                 # if the distance after applying the successor action is below
                 # 2, i.e. distance = 1 since 0 is impossible, remove this action
                 if (self.game_board.hex_distance(after_position, enemy) < 2 and
-                    not self.game_board.no_jump_for_enemy(
-                        successor, after_position, enemy)):
-                    # print("Should be removed: (%s, %s)" % (successor_action))
+                    not self.game_board.no_jump_for_enemy(successor, 
+                    after_position, enemy)):
                     desirable_actions = [x for x in desirable_actions
                                          if x != successor_action]
                     desirable_successors = [x for x in desirable_successors
                                             if x != successor]
 
-        return desirable_successors
+        # remove all risky moves in urgent successors
+        urgent_successors = [x for x in urgent_successors 
+                             if x in desirable_successors]
+        return (urgent_successors, desirable_successors)
 
     def a_star_search(self, game_state, colour):
         COST = 1
@@ -316,6 +346,7 @@ class Player:
             # "PASS" action
             return (action_name, None)
 
+
     def get_start_positions(self):
         # TODO: if red, start pieces = [...], etc.
         start_positions = {}
@@ -341,21 +372,6 @@ class Player:
 
         return exit_positions
 
-    # compute the sum of the distances from all pieces to their closest goals
-    # Input: current_state: the current state of the game
-    # Output: the sum of the distances from all pieces to their closest goals
-    def manhattan_heuristic(self, current_state, colour):
-        # current_state["position"] is frozenset, convert it back to a list
-        positions = current_state.get_pieces(colour)
-
-        heuristic = 0
-        for position in positions:
-            # assuming all moves are jump (move distance = 2), + 1 exit action
-            heuristic += (self.game_board.manhattan_distance(
-                                                    position, colour) / 2 + 1)
-
-        return heuristic
-
     def get_state_reward(self, game_state):
         # TODO: number of pieces in our team: 10
         # TODO: number of exits: 10
@@ -368,8 +384,9 @@ class Player:
             state_rewards[colour] = len(pieces) * \
                         self.reward_of_number_of_pieces(game_state, colour)
             
-            state_rewards[colour] -= 3 * self.manhattan_heuristic(
-                                                        game_state, colour)
+            state_rewards[colour] += self.reward_of_distances(game_state, 
+                                          colour) * self.manhattan_heuristic(
+                                                  game_state, colour)
 
         for colour, exits in number_of_exits.items():
             state_rewards[colour] += exits * self.reward_of_exits(
@@ -388,33 +405,61 @@ class Player:
         number_of_my_pieces = len(game_state.get_pieces(colour))
         number_of_enemy_pieces = len(game_state.get_enemy_pieces(colour, True))
 
-        if number_of_my_pieces == 0 or number_of_enemy_pieces == 0:
+        if not game_state.is_goal(colour) and number_of_my_pieces == 0:
+            return -200
+        elif game_state.is_goal(colour) and number_of_my_pieces == 0:
+            return 200
+        elif number_of_enemy_pieces == 0:
             return 0
 
-        return (-1 * math.log(number_of_my_pieces / number_of_enemy_pieces)
+        return (-3 * math.log(number_of_my_pieces / number_of_enemy_pieces)
                 + 10)
 
     def reward_of_exits(self, game_state, colour):
         number_of_my_pieces = len(game_state.get_pieces(colour))
         number_of_exits = game_state.get_number_of_exits()[colour]
 
-        if number_of_exits >= 4:
-            return 200
+        if game_state.is_goal(colour):
+            return 100
         elif number_of_exits + number_of_my_pieces >= 4:
-            return 50
+            return 10
         else:
             return -100
+
+    def reward_of_distances(self, game_state, colour):
+        number_of_my_pieces = len(game_state.get_pieces(colour))
+        number_of_exits = game_state.get_number_of_exits()[colour]
+
+        if number_of_exits + number_of_my_pieces < 4:
+            return 0
+        else:
+            return -2
+
+    # compute the sum of the distances from all pieces to their closest goals
+    # Input: current_state: the current state of the game
+    # Output: the sum of the distances from all pieces to their closest goals
+    def manhattan_heuristic(self, current_state, colour):
+        # current_state["position"] is frozenset, convert it back to a list
+        positions = current_state.get_pieces(colour)
+
+        heuristic = 0
+        for position in positions:
+            # assuming all moves are jump (move distance = 2), + 1 exit action
+            heuristic += (self.game_board.manhattan_distance(
+                position, colour) / 2 + 1)
+
+        return heuristic
     
-    #check if our piece is next to a enemy's piece, who's got the next turn
-    def in_danger(self, colour):
-        game_board = self.game_board.get_game_board()
-        my_pieces = self.game_state.get_my_pieces()
-        next_player_pieces = self.game_state.get_next_player_pieces(colour)
+    # #check if our piece is next to a enemy's piece, who's got the next turn
+    # def in_danger(self, colour):
+    #     game_board = self.game_board.get_game_board()
+    #     my_pieces = self.game_state.get_my_pieces()
+    #     next_player_pieces = self.game_state.get_next_player_pieces(colour)
 
-        for position in game_board:
-            for piece in my_pieces:
-                if position in next_player_pieces and \
-                    game_board.jump(position, piece): 
-                    return True
+    #     for position in game_board:
+    #         for piece in my_pieces:
+    #             if position in next_player_pieces and \
+    #                 game_board.jump(position, piece): 
+    #                 return True
 
-        return False
+    #     return False

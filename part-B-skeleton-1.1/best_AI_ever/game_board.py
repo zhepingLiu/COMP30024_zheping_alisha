@@ -68,11 +68,10 @@ class GameBoard:
     def get_jump_median(self, position_1, position_2):
         # TODO: return the medium position between a jump action
         # Assumption: the jump action is valid
-        SENTINEL = -4
         (q1, r1) = position_1
         (q2, r2) = position_2
-        q = SENTINEL
-        r = SENTINEL
+        q = None
+        r = None
 
         if q1 == q2 and r1 - r2 == 2:
             q = q1
@@ -95,7 +94,10 @@ class GameBoard:
             q = q1 - 1
             r = r1 + 1
 
-        return (q, r)
+        if q != None and r != None:
+            return (q, r)  
+        else:
+            return False
 
     def distance_to_enemy_pieces(self, game_state):
         distances = {}
@@ -160,9 +162,9 @@ class GameBoard:
         return dist
     
         
-    def get_pieces_colour(self, position):
+    def get_pieces_colour(self, game_state, position):
         for colour in ["red", "green", "blue"]:
-            for p in self.game_state.current_pieces[colour]:
+            for p in game_state.current_pieces[colour]:
                 if position == p:
                     return colour
         return None

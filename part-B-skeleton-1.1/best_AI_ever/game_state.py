@@ -101,7 +101,7 @@ class GameState:
         return False
 
     def is_goal(self, colour):
-        return self.number_of_exits[colour] == 4
+        return self.number_of_exits[colour] >= 4
 
     def update(self, colour, action):
         # update the game_state according to the previous action
@@ -184,6 +184,45 @@ class GameState:
                 self.current_pieces[colour] = frozenset(new_pieces)
 
         return
+
+    def is_protecting_pieces(self):
+        my_pieces = self.get_my_pieces()
+        enemy_pieces = self.get_enemy_pieces(self.colour, True)
+        protecting_pieces = []
+        for my_piece in my_pieces:
+            for enemy_piece in enemy_pieces:
+                potential_jump_median = self.game_board.get_jump_median(
+                    enemy_piece, my_piece)
+                if potential_jump_median != False and \
+                        potential_jump_median in my_pieces:
+                    protecting_pieces.append(my_piece)
+                    break
+
+        return protecting_pieces
+
+    def get_protection_positions(self):
+        my_pieces = self.get_my_pieces()
+        enemy_pieces = self.get_enemy_pieces(self.colour, True)
+        protection_positions = []
+        for my_piece in my_pieces:
+            for enemy_piece in enemy_pieces:
+                jump = self.game_board.jump(enemy_piece, my_piece)
+                if jump[0]:
+                    protection_positions.append(jump[1])
+
+        return protection_positions
+
+    def get_risky_pieces(self):
+        my_pieces = self.get_my_pieces()
+        enemy_pieces = self.get_enemy_pieces(self.colour, True)
+        risky_pieces = []
+        for my_piece in my_pieces:
+            for enemy_piece in enemy_pieces:
+                jump = self.game_board.jump(enemy_piece, my_piece)
+                if jump[0]:
+                    risky_pieces.append(my_piece)
+
+        return risky_pieces
 
     def same_colour(self, piece_1, piece_2):
         for _, pieces in self.current_pieces.items():
