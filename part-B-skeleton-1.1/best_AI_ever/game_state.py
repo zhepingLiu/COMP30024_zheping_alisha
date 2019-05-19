@@ -185,6 +185,13 @@ class GameState:
 
         return
 
+    def same_colour(self, piece_1, piece_2):
+        for _, pieces in self.current_pieces.items():
+            if piece_1 in pieces and piece_2 in pieces:
+                return True
+
+        return False
+
     def construct_goal_actions(self):
         goal_actions = []
         game_state = self
