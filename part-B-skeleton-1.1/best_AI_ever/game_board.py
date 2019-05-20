@@ -1,3 +1,10 @@
+"""
+COMP30024 Artificial Intelligence Project Part B
+Team: best_ai_ever
+Authors: Zheping Liu, 683781
+          Bohan Yang, 814642
+"""
+
 class GameBoard:
     def __init__(self):
         ran = range(-3, 4)
