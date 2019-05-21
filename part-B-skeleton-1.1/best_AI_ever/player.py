@@ -601,7 +601,7 @@ class Player:
         # when the sum of the number of exits and number of pieces is greater
         # or equal than 4, the value of each exit is 10
         elif number_of_exits + number_of_my_pieces >= 4:
-            return 15
+            return 10
         # otherwise, i.e. there is not enough exits and not enough pieces to
         # exit, the value of each exit is -100
         else:
