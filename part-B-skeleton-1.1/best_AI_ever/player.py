@@ -573,17 +573,9 @@ class Player:
         number_of_my_pieces = len(game_state.get_pieces(colour))
         number_of_enemy_pieces = len(game_state.get_enemy_pieces(colour, True))
 
-        # Below conditions is to handle the zero division problem
-        # if the given team is not at goal, but has no more pieces on the
-        # game board, the reward is -200 (large penalty)
-        if not game_state.is_goal(colour) and number_of_my_pieces == 0:
-            return -200
-        # if the given player is at goal, and no more pieces left, 
-        # return 200 (large reward)
-        if game_state.is_goal(colour) and number_of_my_pieces == 0:
-            return 200
-        # if there is no more enemy pieces, the value of pieces is 0
-        elif number_of_enemy_pieces == 0:
+        # if there is no more enemy pieces or our pieces, the value of 
+        # piece is 0
+        if number_of_enemy_pieces == 0 or number_of_my_pieces == 0:
             return 0
 
         # in all other cases, the value is the result from the natural
@@ -609,7 +601,7 @@ class Player:
         # when the sum of the number of exits and number of pieces is greater
         # or equal than 4, the value of each exit is 10
         elif number_of_exits + number_of_my_pieces >= 4:
-            return 10
+            return 15
         # otherwise, i.e. there is not enough exits and not enough pieces to
         # exit, the value of each exit is -100
         else:

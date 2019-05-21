@@ -6,6 +6,7 @@ Authors: Zheping Liu, 683781
 """
 
 from best_AI_ever.game_board import GameBoard as GameBoard
+import copy
 
 class GameState:
     """
@@ -213,14 +214,20 @@ class GameState:
         """
         ACTION_NAME = 0
 
+        previous_state = copy.deepcopy(self)
+
         if action[ACTION_NAME] == "MOVE":
             self.update_moving(colour, action)
         elif action[ACTION_NAME] == "JUMP":
             self.update_jumping(colour, action)
         elif action[ACTION_NAME] == "EXIT":
             self.update_exiting(colour, action)
+        else:
+            # PASS action
+            self.action = action
         
-        # do nothing if the action is "PASS"
+        self.previous_state = previous_state
+        
         return
 
     def update_moving(self, colour, action):
@@ -245,6 +252,7 @@ class GameState:
         new_pieces.append(after_position)
 
         self.current_pieces[colour] = frozenset(new_pieces)
+        self.action = action
 
         return
 
@@ -272,6 +280,8 @@ class GameState:
         # turn the colour of the captured piece if there is any
         self.turn_piece(pre_position, after_position, colour)
 
+        self.action = action
+
         return
 
     def update_exiting(self, colour, action):
@@ -292,6 +302,8 @@ class GameState:
         new_pieces.remove(pre_position)
         self.current_pieces[colour] = frozenset(new_pieces)
         self.number_of_exits[colour] += 1
+
+        self.action = action
 
         return
 
