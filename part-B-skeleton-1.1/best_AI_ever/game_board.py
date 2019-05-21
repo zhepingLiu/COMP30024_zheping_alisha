@@ -121,12 +121,13 @@ class GameBoard:
         return distances
 
     def no_jump_for_enemy(self, game_state, my_piece, enemy_piece):
+        colour = game_state.get_colour(my_piece)
         jump_result = self.jump(enemy_piece, my_piece)
         # when JUMP destination for enemy_piece is my piece or => impossible
         # IF the piece belongs to the previous player, that player have opportunity
         # to eat my piece if the after_player moves their piece away
         if jump_result[0] == True and \
-            (jump_result[1] in game_state.get_my_pieces() or
+            (jump_result[1] in game_state.get_pieces(colour) or
              game_state.same_colour(jump_result[1], enemy_piece)):
             return True
         # when JUMP destination is out of the game board

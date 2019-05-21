@@ -141,7 +141,7 @@ class Player:
         # return the successor with Pass action when no other actions available
         if available_successors == []:
             return self.generate_new_game_state(game_state, 
-                        game_state.get_current_pieces(), ("PASS", None))
+                        game_state.get_current_pieces(), ("PASS", None), colour)
 
         # get all desirable successors
         desirable_successors = self.get_desirable_successors(self.colour)
@@ -360,7 +360,7 @@ class Player:
                 # generate the successor game state and add it to the
                 # exit_successors
                 new_game_state = self.generate_new_game_state(game_state, 
-                                                            new_pieces, action)
+                                                    new_pieces, action, colour)
                 exit_successors.append(new_game_state)
 
         return exit_successors
@@ -405,7 +405,7 @@ class Player:
                         new_pieces[colour].append(jump_destination)
                         new_pieces[colour] = frozenset(new_pieces[colour])
                         new_game_state = self.generate_new_game_state(
-                                                game_state, new_pieces, action)
+                                        game_state, new_pieces, action, colour)
                         # by applying jump over other team's pieces, that
                         # enemy piece will turn to our colour
                         new_game_state.turn_piece(piece, 
@@ -443,21 +443,22 @@ class Player:
                     new_pieces[colour].append(position)
                     new_pieces[colour] = frozenset(new_pieces[colour])
                     new_game_state = self.generate_new_game_state(
-                        game_state, new_pieces, action)
+                                     game_state, new_pieces, action, colour)
                     move_successors.append(new_game_state)
 
         return move_successors
                 
-    def generate_new_game_state(self, pre_game_state, new_pieces, action):
+    def generate_new_game_state(self, pre_game_state, new_pieces, 
+                                action, colour):
         """
         Generate a successor state from a previous game state.
         Input: pre_game_state: the predecessor game state
                new_pieces: new list of pieces
                action: the action applied to the previous game state
+               colour: the colour of the given player
         Output: successor game state with new list of pieces and new action
         """
         ACTION_NAME = 0
-        colour = pre_game_state.get_colour()
         exit_positions = pre_game_state.get_exit_positions()
         number_of_exits = pre_game_state.get_number_of_exits().copy()
 
@@ -572,10 +573,15 @@ class Player:
         number_of_my_pieces = len(game_state.get_pieces(colour))
         number_of_enemy_pieces = len(game_state.get_enemy_pieces(colour, True))
 
+        # Below conditions is to handle the zero division problem
         # if the given team is not at goal, but has no more pieces on the
-        # game board, the reward is -200
+        # game board, the reward is -200 (large penalty)
         if not game_state.is_goal(colour) and number_of_my_pieces == 0:
             return -200
+        # if the given player is at goal, and no more pieces left, 
+        # return 200 (large reward)
+        if game_state.is_goal(colour) and number_of_my_pieces == 0:
+            return 200
         # if there is no more enemy pieces, the value of pieces is 0
         elif number_of_enemy_pieces == 0:
             return 0

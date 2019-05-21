@@ -131,6 +131,18 @@ class GameState:
             next_player = "blue"
             
         return self.get_pieces(next_player)
+
+    def get_colour(self, piece):
+        """
+        Get the colour of the given piece.
+        Input: piece: the given piece
+        Output: the colour of the player that owns this piece
+        """
+        for colour, pieces in self.current_pieces.items():
+            if piece in pieces:
+                return colour
+
+        return
     
     def get_exit_positions(self):
         """
