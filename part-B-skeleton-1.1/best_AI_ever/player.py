@@ -34,7 +34,7 @@ class Player:
         # initialise the starting game state with inital start positions, exit 
         # positions and number of exits for all teams, None as previous action 
         # and previous state
-        self.game_state = GameState(colour, start_positions, 
+        self.game_state = GameState(start_positions, 
                                     exit_positions, action=None, 
                                     previous_state=None, number_of_exits=
                                     number_of_exits)
@@ -195,14 +195,14 @@ class Player:
         
         # get all pieces for the given player that are protecting other
         # pieces of that player
-        protecting_pieces = self.game_state.is_protecting_pieces()
+        protecting_pieces = self.game_state.is_protecting_pieces(colour)
 
         # get all positions that could be occupied to form protection for
         # other pieces of that player
-        protection_positions = self.game_state.get_protection_positions()
+        protection_positions = self.game_state.get_protection_positions(colour)
 
         # get all pieces are in danger (could be acquired by enemy)
-        risky_pieces = self.game_state.get_risky_pieces()
+        risky_pieces = self.game_state.get_risky_pieces(colour)
         
         # iterating through all successor and their respective actions
         for successor, successor_action in zip(available_successors,
@@ -279,7 +279,7 @@ class Player:
 
         # use the tuple of our teams pieces and the other teams' pieces as
         # the key to each different state 
-        game_state_pieces = game_state.get_my_pieces()
+        game_state_pieces = game_state.get_pieces(self.colour)
         g_score[game_state_pieces] = 0
         f_score[game_state_pieces] = 0 + heuristic(game_state, colour)
 
@@ -289,7 +289,7 @@ class Player:
             current_state = open_list.pop()
             # skip if the same combination of all pieces has already been 
             # visited before
-            current_pieces = current_state.get_my_pieces()
+            current_pieces = current_state.get_pieces(self.colour)
             closed_list.append(current_pieces)
 
             # if the current state is the goal, return the actions to this state
@@ -298,7 +298,7 @@ class Player:
 
             for successor_state in self.generate_successor(current_state, 
                                                            colour):
-                successor_pieces = successor_state.get_my_pieces()
+                successor_pieces = successor_state.get_pieces(self.colour)
                 if successor_pieces in closed_list:
                     continue
 
@@ -393,7 +393,7 @@ class Player:
                     # if there is a possible JUMP coordinate and this coordinate
                     # is not occupied by other pieces
                     if jump_destination[JUMP_RESULT] and \
-                        jump_destination[JUMP_POSITION] 
+                        jump_destination[JUMP_POSITION] \
                         not in occupied_positions:
                         # assign the coordinate to the variable jump_destination
                         jump_destination = jump_destination[1]
@@ -466,8 +466,8 @@ class Player:
         if action[ACTION_NAME] == "EXIT":
             number_of_exits[colour] += 1
 
-        return GameState(colour, new_pieces, exit_positions, 
-                            action, pre_game_state, number_of_exits)
+        return GameState(new_pieces, exit_positions, 
+                         action, pre_game_state, number_of_exits)
 
     def get_action(self, action_name, start_position, destination):
         """

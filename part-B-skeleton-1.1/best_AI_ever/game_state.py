@@ -8,9 +8,25 @@ Authors: Zheping Liu, 683781
 from best_AI_ever.game_board import GameBoard as GameBoard
 
 class GameState:
-    def __init__(self, colour, current_pieces, exit_positions,
+    """
+    GameState class that represents a single game state at a given time.
+    Each GameState instance contains the current pieces for all teams on 
+    the game board; the exit positions of all teams; the action that 
+    applied to the predecessor state; the predecessor game state; number 
+    of exits for all teams; and a GameBoard instance.
+    """
+    def __init__(self, current_pieces, exit_positions,
                  action, previous_state, number_of_exits):
-        self.colour = colour
+        """
+        Initialise a GameState instance
+
+        Input: current_pieces: current pieces for all teams, dict type
+               exit_positions: exit positions for all teams, dict type
+               action: the action applied to the predecessor state, None at the
+                       initial game state
+               previous_state: the predecessor state
+               number_of_exits: current number of exits for all teams, dict type
+        """
         self.current_pieces = current_pieces
         self.exit_positions = exit_positions
         self.action = action
@@ -18,26 +34,47 @@ class GameState:
         self.number_of_exits = number_of_exits
         self.game_board = GameBoard()
 
-    def get_colour(self):
-        return self.colour
-
     def get_current_pieces(self):
+        """
+        Get current pieces for all players.
+        Output: a dict, with colours of different players (teams) as keys,
+                a frozenset contains the positions of the respective pieces for
+                the player as values
+        """
         return self.current_pieces
 
     def get_pieces(self, colour):
+        """
+        Get all pieces for a given player.
+        Input: colour: the given player
+        Output: a frozenset contains a list of pieces of the given player
+        """
         return self.current_pieces[colour]
 
     def get_frozenset_pieces(self):
+        """
+        Get a frozenset of the all current pieces.
+        Output: a frozenset of the current_pieces dict items.
+        """
         return frozenset(self.current_pieces.items())
 
-    def get_my_pieces(self):
-        return self.current_pieces[self.colour]
-
-    def get_enemy_pieces(self, colour, list=False):
+    def get_enemy_pieces(self, colour, is_list=False):
+        """
+        Get all enemy pieces respecting to a give player.
+        Input: colour: the given player
+               is_list: return a list of all enemy pieces if True, otherwise
+               return a dict that contains pieces of different enemies in
+               separate entries.
+        
+        Output: list of all enemy pieces, if is_list == True;
+                dict with enemy colour as key, the frozenset of their respective
+                pieces as value, if is_list == False
+        """
         all_colours = ["red", "blue", "green"]
+        # define the enemy colours for the given player colour
         enemy_colours = [x for x in all_colours if x != colour]
 
-        if not list:
+        if not is_list:
             # return enemy pieces as dict, keys are the enemy colours
             enemy_pieces = {}
             for enemy_colour in enemy_colours:
@@ -51,9 +88,14 @@ class GameState:
         return enemy_pieces
 
     def get_pre_player_pieces(self, colour):
-        if self.colour == "red":
+        """
+        Get the pieces of the player before the given player.
+        Input: colour: the given player
+        Output: a frozenset contains the list of pieces of the previous player
+        """
+        if colour == "red":
             pre_player = "blue"
-        elif self.colour == "green":
+        elif colour == "green":
             pre_player = "red"
         else:
             pre_player = "green"
@@ -61,9 +103,14 @@ class GameState:
         return self.get_pieces(pre_player)
 
     def get_next_player_colour(self, colour):
-        if self.colour == "blue":
+        """
+        Get the colour of the player after the given player.
+        Input: colour: the given player
+        Output: the colour of the next player
+        """
+        if colour == "blue":
             next_player = "red"
-        elif self.colour == "red":
+        elif colour == "red":
             next_player = "green"
         else:
             next_player = "blue"
@@ -71,9 +118,14 @@ class GameState:
         return next_player
     
     def get_next_player_pieces(self, colour):
-        if self.colour == "blue":
+        """
+        Get the pieces of the player after the given player.
+        Input: colour: the given player
+        Output: a frozenset contains the list of pieces of the next player
+        """
+        if colour == "blue":
             next_player = "red"
-        elif self.colour == "red":
+        elif colour == "red":
             next_player = "green"
         else:
             next_player = "blue"
@@ -81,20 +133,39 @@ class GameState:
         return self.get_pieces(next_player)
     
     def get_exit_positions(self):
+        """
+        Get exit positions for all players.
+        Output: a dict with player colour as key, list of their respective
+                exit positions as values
+        """
         return self.exit_positions
 
     def get_action(self):
+        """
+        Get the action applied to predecessor.
+        """
         return self.action
 
     def get_previous_state(self):
+        """
+        Get the predecessor state.
+        """
         return self.previous_state
 
     def get_number_of_exits(self):
+        """
+        Get the number of exits for all players.
+        Output: a dict with player colour as key, number of their respective
+                exits as values
+        """
         return self.number_of_exits
 
     def get_occupied_positions(self):
-        # return all hexes that are currently occupied,
-        # including pieces from all teams including ourself
+        """
+        Get all hexes that are currently occupied, including pieces from all 
+        teams including ourself.
+        Output: a list contains all occupied positions
+        """
         occupied_positions = []
         for _, pieces in self.current_pieces.items():
             occupied_positions += pieces
@@ -102,20 +173,32 @@ class GameState:
         return occupied_positions
 
     def is_sub_goal(self, piece, colour):
+        """
+        Check if the piece of the given player (colour) is at any exit 
+        positions.
+        Input: piece: the given piece
+               colour: the given player
+        Output: True, if the given piece is at an exit position;
+                False, otherwise
+        """
         if piece in self.exit_positions[colour]:
             return True
         
         return False
 
     def is_goal(self, colour):
+        """
+        Check if a given player is at goal state.
+        """
         return self.number_of_exits[colour] >= 4
 
     def update(self, colour, action):
-        # update the game_state according to the previous action
-        # actions example: ("MOVE", ((0, 0), (0, 1)))
-        #                  ("JUMP", ((0, 1), (-2, 3)))
-        #                  ("EXIT", (-2, 3))
-        #                  ("PASS", None)
+        """
+        Update the game state according to the action applied by the given
+        player.
+        Input: colour: the given player
+               action: the applied action
+        """
         ACTION_NAME = 0
 
         if action[ACTION_NAME] == "MOVE":
@@ -129,14 +212,23 @@ class GameState:
         return
 
     def update_moving(self, colour, action):
+        """
+        Update the game state with a MOVE action applied by the given player.
+        Input: colour: the given player
+               action: the applied action
+        """
         ACTION_POSITIONS = 1
         PRE_ACTION_POSITION = 0
         AFTER_ACTION_POSITION = 1
 
+        # the position of the piece before applying the action
         pre_position = action[ACTION_POSITIONS][PRE_ACTION_POSITION]
+        # the position of the piece after applying the action
         after_position = action[ACTION_POSITIONS][AFTER_ACTION_POSITION]
 
         new_pieces = list(self.current_pieces[colour])
+        # apply the action by removing the previous position and add the 
+        # after action position
         new_pieces.remove(pre_position)
         new_pieces.append(after_position)
 
@@ -192,9 +284,9 @@ class GameState:
 
         return
 
-    def is_protecting_pieces(self):
-        my_pieces = self.get_my_pieces()
-        enemy_pieces = self.get_enemy_pieces(self.colour, True)
+    def is_protecting_pieces(self, colour):
+        my_pieces = self.get_pieces(colour)
+        enemy_pieces = self.get_enemy_pieces(colour, True)
         protecting_pieces = []
         for my_piece in my_pieces:
             for enemy_piece in enemy_pieces:
@@ -207,9 +299,9 @@ class GameState:
 
         return protecting_pieces
 
-    def get_protection_positions(self):
-        my_pieces = self.get_my_pieces()
-        enemy_pieces = self.get_enemy_pieces(self.colour, True)
+    def get_protection_positions(self, colour):
+        my_pieces = self.get_pieces(colour)
+        enemy_pieces = self.get_enemy_pieces(colour, True)
         protection_positions = []
         for my_piece in my_pieces:
             for enemy_piece in enemy_pieces:
@@ -219,9 +311,9 @@ class GameState:
 
         return protection_positions
 
-    def get_risky_pieces(self):
-        my_pieces = self.get_my_pieces()
-        enemy_pieces = self.get_enemy_pieces(self.colour, True)
+    def get_risky_pieces(self, colour):
+        my_pieces = self.get_pieces(colour)
+        enemy_pieces = self.get_enemy_pieces(colour, True)
         risky_pieces = []
         for my_piece in my_pieces:
             for enemy_piece in enemy_pieces:
@@ -250,10 +342,10 @@ class GameState:
 
         return list(reversed(goal_actions))
 
-    def print_game_state(self):
+    def print_game_state(self, colour):
         print("My: %s; Enemies: %s; Action: %s; Exits: %s" % 
-              (self.current_pieces[self.colour], 
-               self.get_enemy_pieces(self.colour), 
+              (self.current_pieces[colour], 
+               self.get_enemy_pieces(colour), 
                self.action, self.number_of_exits))
 
     def print_all_pre_states(self):
