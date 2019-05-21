@@ -18,7 +18,7 @@ class GameState:
     def __init__(self, current_pieces, exit_positions,
                  action, previous_state, number_of_exits):
         """
-        Initialise a GameState instance
+        Initialise a GameState instance.
 
         Input: current_pieces: current pieces for all teams, dict type
                exit_positions: exit positions for all teams, dict type
@@ -249,38 +249,65 @@ class GameState:
         return
 
     def update_jumping(self, colour, action):
+        """
+        Update the game state with a JUMP action applied by the given player.
+        Input: colour: the given player
+               action: the applied action
+        """
         ACTION_POSITIONS = 1
         PRE_ACTION_POSITION = 0
         AFTER_ACTION_POSITION = 1
 
+        # the position of the piece before applying the action
         pre_position = action[ACTION_POSITIONS][PRE_ACTION_POSITION]
+        # the position of the piece after applying the action
         after_position = action[ACTION_POSITIONS][AFTER_ACTION_POSITION]
 
         new_pieces = list(self.current_pieces[colour])
+        # apply the action by removing the previous position and add the
+        # after action position
         new_pieces.remove(pre_position)
         new_pieces.append(after_position)
         self.current_pieces[colour] = frozenset(new_pieces)
+        # turn the colour of the captured piece if there is any
         self.turn_piece(pre_position, after_position, colour)
 
         return
 
     def update_exiting(self, colour, action):
+        """
+        Update the game state with a EXIT action applied by the given player.
+        Input: colour: the given player
+               action: the applied action
+        """
         ACTION_POSITIONS = 1
 
+        # the position of the piece before applying the action
+        # for EXIT action, there is no after-action position
         pre_position = action[ACTION_POSITIONS]
 
+        # apply the action by removing the previous position and increment
+        # the number of exits
         new_pieces = list(self.current_pieces[colour])
         new_pieces.remove(pre_position)
         self.current_pieces[colour] = frozenset(new_pieces)
-
         self.number_of_exits[colour] += 1
 
         return
 
     def turn_piece(self, pre_position, after_position, colour):
+        """
+        Check if there is any piece captured by applying JUMP action,
+        if there is any, turn the colour of the captured piece.
+        Input: pre_position: the previous position before applying JUMP
+               after_position: the after position after applying JUMP
+               colour: the colour of the player applied JUMP action
+        """
+        # compute the position of the jump median
         taken_piece = self.game_board.get_jump_median(
                                         pre_position, after_position)
 
+        # check if the piece at jump median belongs to other players
         for taken_colour, pieces in self.current_pieces.items():
             # if the colour of the taken piece is different from the colour
             # of the piece took it
@@ -289,7 +316,8 @@ class GameState:
                 taken_colour_pieces.remove(taken_piece)
                 self.current_pieces[taken_colour] = frozenset(
                                                     taken_colour_pieces)
-
+                # remove the taken piece from its original player and add
+                # it to the player who applied JUMP action
                 new_pieces = list(self.current_pieces[colour])
                 new_pieces.append(taken_piece)
                 self.current_pieces[colour] = frozenset(new_pieces)
@@ -297,13 +325,24 @@ class GameState:
         return
 
     def is_protecting_pieces(self, colour):
+        """
+        Get the pieces that are protecting other pieces (blocking enemies'
+        pieces to apply JUMP action to capture one of the player's piece).
+        Input: colour: the given player
+        Output: a list contains all pieces that are protecting other pieces for
+                the given player
+        """
         my_pieces = self.get_pieces(colour)
         enemy_pieces = self.get_enemy_pieces(colour, True)
         protecting_pieces = []
+        # iterate through all my pieces and enemy pieces
         for my_piece in my_pieces:
             for enemy_piece in enemy_pieces:
+                # compute the jump median (if any)
                 potential_jump_median = self.game_board.get_jump_median(
                     enemy_piece, my_piece)
+                # if there is a piece at jump median and it belongs to us,
+                # add my_piece to the protecting_pieces list
                 if potential_jump_median != False and \
                         potential_jump_median in my_pieces:
                     protecting_pieces.append(my_piece)
@@ -312,11 +351,18 @@ class GameState:
         return protecting_pieces
 
     def get_protection_positions(self, colour):
+        """
+        Get the positions that can result protection for other pieces for the
+        given player.
+        Input: colour: the given player
+        """
         my_pieces = self.get_pieces(colour)
         enemy_pieces = self.get_enemy_pieces(colour, True)
         protection_positions = []
         for my_piece in my_pieces:
             for enemy_piece in enemy_pieces:
+                # if an enemy is available to JUMP over one of our piece,
+                # add the destination of that JUMP action to the list
                 jump = self.game_board.jump(enemy_piece, my_piece)
                 if jump[0]:
                     protection_positions.append(jump[1])
@@ -324,11 +370,18 @@ class GameState:
         return protection_positions
 
     def get_risky_pieces(self, colour):
+        """
+        Get the pieces that could be captured by the enemies for the 
+        given player.
+        Input: colour: the given player
+        """
         my_pieces = self.get_pieces(colour)
         enemy_pieces = self.get_enemy_pieces(colour, True)
         risky_pieces = []
         for my_piece in my_pieces:
             for enemy_piece in enemy_pieces:
+                # if an enemy is available to JUMP over one of our piece,
+                # add my piece to the risky_pieces list
                 jump = self.game_board.jump(enemy_piece, my_piece)
                 if jump[0]:
                     risky_pieces.append(my_piece)
@@ -336,6 +389,11 @@ class GameState:
         return risky_pieces
 
     def same_colour(self, piece_1, piece_2):
+        """
+        Check if two pieces belongs to the same player (same colour)/
+        Input: piece_1: the first given piece
+               piece_2: the second given piece
+        """
         for _, pieces in self.current_pieces.items():
             if piece_1 in pieces and piece_2 in pieces:
                 return True
@@ -343,25 +401,17 @@ class GameState:
         return False
 
     def construct_goal_actions(self):
+        """
+        Construct the sequence of actions from the initial state to the
+        current state.
+        Output: list of actions from initial state to current state
+        """
         goal_actions = []
         game_state = self
-        # game_state.print_game_state()
 
+        # loop until the game_state is None, i.e. initial state has been reached
         while game_state.get_previous_state() != None:
             goal_actions.append(game_state.get_action())
             game_state = game_state.get_previous_state()
-            # game_state.print_game_state()
 
         return list(reversed(goal_actions))
-
-    def print_game_state(self, colour):
-        print("My: %s; Enemies: %s; Action: %s; Exits: %s" % 
-              (self.current_pieces[colour], 
-               self.get_enemy_pieces(colour), 
-               self.action, self.number_of_exits))
-
-    def print_all_pre_states(self):
-        current_state = self
-        while current_state.previous_state != None:
-            current_state.previous_state.print_game_state()
-            current_state = current_state.previous_state
